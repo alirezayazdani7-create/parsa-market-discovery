@@ -1,0 +1,6 @@
+{
+  "name": "PARSA",
+  "description": "PARSA Access & Development Environment Setup and Technical Audit System",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
