@@ -621,6 +621,10 @@ fun ApiExplorerTab(
 ) {
     val endpoints = listOf(
         Pair("GET", "/api/audit/full-state"),
+        Pair("GET", "/api/audit/universe"),
+        Pair("GET", "/api/audit/learning/experiences"),
+        Pair("GET", "/api/audit/learning/insights"),
+        Pair("GET", "/api/audit/integrity/anomalies"),
         Pair("GET", "/api/audit/education/concepts"),
         Pair("GET", "/api/audit/risk/rules"),
         Pair("GET", "/api/audit/status"),

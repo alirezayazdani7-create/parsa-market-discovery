@@ -352,9 +352,53 @@ class AuditApiService(
         )
     }
 
+    suspend fun getUniverse(): ApiResponse<List<com.example.data.entity.MarketAssetEntity>> {
+        val assets = repository.getUniverseAssetsPaged(limit = 100, offset = 0)
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/universe",
+            data = assets,
+            status = "CONNECTED"
+        )
+    }
+
+    suspend fun getExperiences(): ApiResponse<List<com.example.data.entity.ExperienceMemoryEntity>> {
+        val experiences = repository.getRecentExperiences(50)
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/learning/experiences",
+            data = experiences,
+            status = "CONNECTED"
+        )
+    }
+
+    suspend fun getCrossAssetInsights(): ApiResponse<List<com.example.data.entity.CrossAssetInsightEntity>> {
+        val insights = repository.getCrossAssetInsights()
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/learning/insights",
+            data = insights,
+            status = "CONNECTED"
+        )
+    }
+
+    suspend fun getIntegrityAnomalies(): ApiResponse<List<com.example.data.entity.DataIntegrityAnomalyEntity>> {
+        val anomalies = repository.getIntegrityAnomalies()
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/integrity/anomalies",
+            data = anomalies,
+            status = "CONNECTED"
+        )
+    }
+
     suspend fun dispatchRoute(method: String, path: String): ApiResponse<out Any> {
         return when {
             method == "GET" && path == "/api/audit/full-state" -> getFullState()
+            method == "GET" && path == "/api/audit/universe" -> getUniverse()
+            method == "GET" && path == "/api/audit/learning/experiences" -> getExperiences()
+            method == "GET" && path == "/api/audit/learning/insights" -> getCrossAssetInsights()
+            method == "GET" && path == "/api/audit/integrity/anomalies" -> getIntegrityAnomalies()
             method == "GET" && path == "/api/audit/education/concepts" -> getEducationConcepts()
             method == "GET" && path == "/api/audit/risk/rules" -> getRiskRules()
             method == "GET" && path == "/api/audit/status" -> getStatus()

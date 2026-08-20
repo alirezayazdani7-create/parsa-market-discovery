@@ -225,6 +225,42 @@ All endpoints return structured JSON with timestamps, success flags, and machine
 
 ---
 
+### 4.14 `GET /api/audit/universe`
+- **URL:** `/api/audit/universe`
+- **Method:** `GET`
+- **Authentication:** None (Read-Only)
+- **Purpose:** Query Market Universe assets (supports 1200+ capacity) with independent Genesis timestamps (e.g., BTC: 2009, ETH: 2015, SOL: 2020) and zero backfilled fake dates.
+- **Current Status:** `VERIFIED`
+
+---
+
+### 4.15 `GET /api/audit/learning/experiences`
+- **URL:** `/api/audit/learning/experiences`
+- **Method:** `GET`
+- **Authentication:** None (Read-Only)
+- **Purpose:** Query Walk-Forward Experience Memories generated chronologically without future leakage.
+- **Current Status:** `VERIFIED`
+
+---
+
+### 4.16 `GET /api/audit/learning/insights`
+- **URL:** `/api/audit/learning/insights`
+- **Method:** `GET`
+- **Authentication:** None (Read-Only)
+- **Purpose:** Query Cross-Asset statistical insights synthesized across benchmark assets (BTC, ETH, SOL, BNB).
+- **Current Status:** `VERIFIED`
+
+---
+
+### 4.17 `GET /api/audit/integrity/anomalies`
+- **URL:** `/api/audit/integrity/anomalies`
+- **Method:** `GET`
+- **Authentication:** None (Read-Only)
+- **Purpose:** Inspect data integrity anomaly audit logs (Impossible Prices, Timestamp Errors, Missing Gaps, Out of Order).
+- **Current Status:** `VERIFIED`
+
+---
+
 ## 5. Test Execution Protocol for AI Auditor
 
 1. **How AI Contractor triggers a test run:**

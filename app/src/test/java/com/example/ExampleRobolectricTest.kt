@@ -160,5 +160,111 @@ class ExampleRobolectricTest {
     assertTrue(fetchedProgress!!.isCompleted)
     assertEquals(100.0, fetchedProgress.scorePct, 0.01)
   }
+
+  @Test
+  fun market_universe_and_genesis_points() = runBlocking {
+    val universeManager = com.example.data.universe.MarketUniverseManager(db)
+    val count = universeManager.initializeUniverseIfEmpty()
+    assertTrue(count >= 5)
+
+    val btc = universeManager.getAsset("BTC/USDT")
+    val eth = universeManager.getAsset("ETH/USDT")
+    val sol = universeManager.getAsset("SOL/USDT")
+
+    assertNotNull(btc)
+    assertNotNull(eth)
+    assertNotNull(sol)
+
+    // Genesis verification: Bitcoin earliest (2009), Ethereum (2015), Solana (2020)
+    assertTrue(btc!!.genesisTimestamp!! < eth!!.genesisTimestamp!!)
+    assertTrue(eth.genesisTimestamp!! < sol!!.genesisTimestamp!!)
+    assertEquals("ACTIVE", btc.status)
+
+    val pagedAssets = universeManager.getAssetsPaged(10, 0)
+    assertTrue(pagedAssets.isNotEmpty())
+  }
+
+  @Test
+  fun data_integrity_engine_validation() = runBlocking {
+    val integrityEngine = com.example.data.integrity.DataIntegrityEngine(db)
+
+    // 1. Invalid candle with High < Low
+    val invalidCandles = listOf(
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT",
+        timeframe = "1h",
+        openTime = 1000L,
+        closeTime = 2000L,
+        openPrice = 100.0,
+        highPrice = 80.0, // High < Low error
+        lowPrice = 90.0,
+        closePrice = 95.0,
+        volume = 10.0
+      )
+    )
+
+    val anomalies = integrityEngine.auditCandleStream("BTC/USDT", "1h", invalidCandles, 3600000L)
+    assertTrue(anomalies.isNotEmpty())
+    val impossiblePriceAnomaly = anomalies.firstOrNull { it.anomalyType == "IMPOSSIBLE_PRICE" }
+    assertNotNull(impossiblePriceAnomaly)
+    assertEquals("CRITICAL", impossiblePriceAnomaly!!.severity)
+  }
+
+  @Test
+  fun walk_forward_learning_and_cross_asset_synthesis() = runBlocking {
+    val learningEngine = com.example.data.learning.HistoricalLearningEngine(db)
+
+    // 5 past candles
+    val pastCandles = listOf(
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1d", openTime = 1000L, closeTime = 1999L,
+        openPrice = 100.0, highPrice = 105.0, lowPrice = 98.0, closePrice = 102.0, volume = 50.0
+      ),
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1d", openTime = 2000L, closeTime = 2999L,
+        openPrice = 102.0, highPrice = 106.0, lowPrice = 101.0, closePrice = 104.0, volume = 55.0
+      ),
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1d", openTime = 3000L, closeTime = 3999L,
+        openPrice = 104.0, highPrice = 107.0, lowPrice = 103.0, closePrice = 105.0, volume = 60.0
+      ),
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1d", openTime = 4000L, closeTime = 4999L,
+        openPrice = 105.0, highPrice = 108.0, lowPrice = 104.0, closePrice = 106.0, volume = 50.0
+      ),
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1d", openTime = 5000L, closeTime = 5999L,
+        openPrice = 106.0, highPrice = 120.0, lowPrice = 105.0, closePrice = 118.0, volume = 150.0 // Breakout with volume
+      )
+    )
+
+    val asOfTime = 5999L
+
+    // Forward candles strictly after asOfTime
+    val forwardCandles = listOf(
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1d", openTime = 6000L, closeTime = 6999L,
+        openPrice = 118.0, highPrice = 125.0, lowPrice = 117.0, closePrice = 124.0, volume = 120.0
+      )
+    )
+
+    val experience = learningEngine.processWalkForwardStep(
+      symbol = "BTC/USDT",
+      timeframe = "1d",
+      pastCandles = pastCandles,
+      asOfTime = asOfTime,
+      forwardCandles = forwardCandles
+    )
+
+    assertNotNull(experience)
+    assertEquals("BREAKOUT", experience!!.detectedPattern)
+    assertEquals("CONTINUATION_UPWARD", experience.actualOutcome)
+    assertTrue(experience.isWalkForwardVerified)
+
+    val insights = learningEngine.synthesizeCrossAssetInsights()
+    assertTrue(insights.isNotEmpty())
+    assertEquals("CROSS_ASSET_BREAKOUT_CONSISTENCY", insights[0].insightCode)
+  }
 }
+
 

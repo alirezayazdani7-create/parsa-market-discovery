@@ -132,3 +132,107 @@ data class EducationProgressEntity(
     val scorePct: Double = 0.0,
     val lastEvaluatedAt: Long = System.currentTimeMillis()
 )
+
+@Entity(tableName = "market_assets")
+data class MarketAssetEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val symbol: String, // e.g. "BTC/USDT"
+    val name: String,
+    val marketType: String = "SPOT", // "SPOT", "PERPETUAL", "FUTURES"
+    val exchange: String = "PRIMARY_AGGREGATOR",
+    val marketCapRank: Int = 1, // Supports 1 to 1200+
+    val genesisTimestamp: Long? = null, // Real start date, never backfilled with fake data
+    val firstSeenAt: Long = System.currentTimeMillis(),
+    val lastSeenAt: Long = System.currentTimeMillis(),
+    val dataAvailabilityPct: Double = 100.0,
+    val supportedTimeframes: String = "1m,5m,15m,30m,1h,4h,1d,1w",
+    val status: String = "ACTIVE", // "ACTIVE", "DELISTED", "UNINITIALIZED", "DISCONTINUED"
+    val schemaVersion: Int = 1,
+    val sourceMetadataJson: String = "{}"
+)
+
+@Entity(
+    tableName = "historical_candles",
+    indices = [
+        androidx.room.Index(value = ["symbol", "timeframe", "openTime"], unique = true)
+    ]
+)
+data class HistoricalCandleEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val symbol: String,
+    val timeframe: String, // "1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w"
+    val openTime: Long,
+    val closeTime: Long,
+    val openPrice: Double,
+    val highPrice: Double,
+    val lowPrice: Double,
+    val closePrice: Double,
+    val volume: Double,
+    val quoteVolume: Double = 0.0,
+    val tradesCount: Long = 0,
+    val isClosed: Boolean = true,
+    val integrityChecked: Boolean = true,
+    val source: String = "HISTORICAL_ARCHIVE"
+)
+
+@Entity(
+    tableName = "experience_memories",
+    indices = [
+        androidx.room.Index(value = ["assetSymbol", "timeframe", "timestamp"])
+    ]
+)
+data class ExperienceMemoryEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val experienceId: String,
+    val assetSymbol: String,
+    val timeframe: String,
+    val timestamp: Long,
+    val marketState: String, // "BULLISH_TREND", "BEARISH_TREND", "RANGE_BOUND", "HIGH_VOLATILITY", "ACCUMULATION", "DISTRIBUTION"
+    val detectedPattern: String, // "BREAKOUT", "SUPPORT_BOUNCE", "RESISTANCE_REJECTION", "FALSE_BREAKOUT", "ORDERBOOK_ABSORPTION"
+    val conceptCode: String,
+    val ruleUsed: String,
+    val expectedOutcome: String,
+    val actualOutcome: String? = null,
+    val errorMagnitude: Double? = null,
+    val lessonLearned: String,
+    val confidence: Double = 1.0,
+    val isWalkForwardVerified: Boolean = true,
+    val memoryVersion: Int = 1,
+    val crossAssetCorrelatedCount: Int = 0,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "cross_asset_insights")
+data class CrossAssetInsightEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val insightCode: String,
+    val patternOrConcept: String,
+    val primaryAsset: String,
+    val correlatedAssetsJson: String,
+    val sampleSize: Int,
+    val statisticalConfidence: Double,
+    val consistencyScore: Double,
+    val findingsSummary: String,
+    val evidenceHash: String,
+    val isVerified: Boolean = true,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "data_integrity_anomalies")
+data class DataIntegrityAnomalyEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val symbol: String,
+    val timeframe: String,
+    val anomalyType: String, // "MISSING_DATA", "DUPLICATE_DATA", "TIMESTAMP_ERROR", "OUT_OF_ORDER", "IMPOSSIBLE_PRICE", "ABNORMAL_GAP", "DELISTED_GAP", "INSUFFICIENT_HISTORY"
+    val severity: String, // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+    val targetTimestamp: Long,
+    val details: String,
+    val isResolved: Boolean = false,
+    val detectedAt: Long = System.currentTimeMillis()
+)
+

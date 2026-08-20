@@ -198,6 +198,10 @@ class AuditRepository(private val db: AppDatabase) {
                 category = "SYSTEM",
                 message = "PARSA System Environment and Audit Database initialized successfully with Market Education Foundation."
             )
+
+            // Initialize Market Universe Manager with Benchmark Genesis Points
+            val universeManager = com.example.data.universe.MarketUniverseManager(db)
+            universeManager.initializeUniverseIfEmpty()
         }
     }
 
@@ -206,4 +210,29 @@ class AuditRepository(private val db: AppDatabase) {
 
     suspend fun getRiskRules(): List<com.example.data.entity.RiskRuleEntity> =
         db.riskRuleDao().getRiskRulesList()
+
+    suspend fun getUniverseAssetsPaged(limit: Int, offset: Int): List<com.example.data.entity.MarketAssetEntity> =
+        db.marketAssetDao().getAssetsPaged(limit, offset)
+
+    suspend fun getUniverseCount(): Int =
+        db.marketAssetDao().getAssetsCount()
+
+    suspend fun getAssetBySymbol(symbol: String): com.example.data.entity.MarketAssetEntity? =
+        db.marketAssetDao().getAssetBySymbol(symbol)
+
+    suspend fun insertCandles(candles: List<com.example.data.entity.HistoricalCandleEntity>) =
+        db.historicalCandleDao().insertCandles(candles)
+
+    suspend fun getCandlesChronological(symbol: String, timeframe: String): List<com.example.data.entity.HistoricalCandleEntity> =
+        db.historicalCandleDao().getCandlesChronological(symbol, timeframe)
+
+    suspend fun getRecentExperiences(limit: Int = 100): List<com.example.data.entity.ExperienceMemoryEntity> =
+        db.experienceMemoryDao().getExperiencesList(limit)
+
+    suspend fun getCrossAssetInsights(): List<com.example.data.entity.CrossAssetInsightEntity> =
+        db.crossAssetInsightDao().getInsightsList()
+
+    suspend fun getIntegrityAnomalies(): List<com.example.data.entity.DataIntegrityAnomalyEntity> =
+        db.dataIntegrityAnomalyDao().getAnomaliesList()
 }
+

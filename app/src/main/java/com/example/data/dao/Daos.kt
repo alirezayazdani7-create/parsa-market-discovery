@@ -167,3 +167,91 @@ interface EducationProgressDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateProgress(progress: com.example.data.entity.EducationProgressEntity): Long
 }
+
+@Dao
+interface MarketAssetDao {
+    @Query("SELECT * FROM market_assets ORDER BY marketCapRank ASC")
+    fun getAllAssets(): Flow<List<com.example.data.entity.MarketAssetEntity>>
+
+    @Query("SELECT * FROM market_assets ORDER BY marketCapRank ASC LIMIT :limit OFFSET :offset")
+    suspend fun getAssetsPaged(limit: Int, offset: Int): List<com.example.data.entity.MarketAssetEntity>
+
+    @Query("SELECT COUNT(*) FROM market_assets")
+    suspend fun getAssetsCount(): Int
+
+    @Query("SELECT * FROM market_assets WHERE symbol = :symbol LIMIT 1")
+    suspend fun getAssetBySymbol(symbol: String): com.example.data.entity.MarketAssetEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAsset(asset: com.example.data.entity.MarketAssetEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAssets(assets: List<com.example.data.entity.MarketAssetEntity>)
+}
+
+@Dao
+interface HistoricalCandleDao {
+    @Query("SELECT * FROM historical_candles WHERE symbol = :symbol AND timeframe = :timeframe ORDER BY openTime ASC")
+    suspend fun getCandlesChronological(symbol: String, timeframe: String): List<com.example.data.entity.HistoricalCandleEntity>
+
+    @Query("SELECT * FROM historical_candles WHERE symbol = :symbol AND timeframe = :timeframe AND openTime <= :asOfTime ORDER BY openTime ASC")
+    suspend fun getCandlesUpToTime(symbol: String, timeframe: String, asOfTime: Long): List<com.example.data.entity.HistoricalCandleEntity>
+
+    @Query("SELECT * FROM historical_candles WHERE symbol = :symbol AND timeframe = :timeframe AND openTime > :asOfTime ORDER BY openTime ASC LIMIT :limit")
+    suspend fun getForwardEvaluationCandles(symbol: String, timeframe: String, asOfTime: Long, limit: Int): List<com.example.data.entity.HistoricalCandleEntity>
+
+    @Query("SELECT COUNT(*) FROM historical_candles WHERE symbol = :symbol")
+    suspend fun getCandlesCountForSymbol(symbol: String): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCandles(candles: List<com.example.data.entity.HistoricalCandleEntity>)
+}
+
+@Dao
+interface ExperienceMemoryDao {
+    @Query("SELECT * FROM experience_memories ORDER BY timestamp DESC")
+    fun getAllExperiences(): Flow<List<com.example.data.entity.ExperienceMemoryEntity>>
+
+    @Query("SELECT * FROM experience_memories ORDER BY timestamp DESC LIMIT :limit")
+    suspend fun getExperiencesList(limit: Int = 100): List<com.example.data.entity.ExperienceMemoryEntity>
+
+    @Query("SELECT * FROM experience_memories WHERE assetSymbol = :symbol ORDER BY timestamp ASC")
+    suspend fun getExperiencesForAsset(symbol: String): List<com.example.data.entity.ExperienceMemoryEntity>
+
+    @Query("SELECT COUNT(*) FROM experience_memories")
+    suspend fun getExperiencesCount(): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertExperience(experience: com.example.data.entity.ExperienceMemoryEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertExperiences(experiences: List<com.example.data.entity.ExperienceMemoryEntity>)
+}
+
+@Dao
+interface CrossAssetInsightDao {
+    @Query("SELECT * FROM cross_asset_insights ORDER BY createdAt DESC")
+    fun getAllInsights(): Flow<List<com.example.data.entity.CrossAssetInsightEntity>>
+
+    @Query("SELECT * FROM cross_asset_insights ORDER BY createdAt DESC")
+    suspend fun getInsightsList(): List<com.example.data.entity.CrossAssetInsightEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertInsight(insight: com.example.data.entity.CrossAssetInsightEntity): Long
+}
+
+@Dao
+interface DataIntegrityAnomalyDao {
+    @Query("SELECT * FROM data_integrity_anomalies ORDER BY detectedAt DESC")
+    fun getAllAnomalies(): Flow<List<com.example.data.entity.DataIntegrityAnomalyEntity>>
+
+    @Query("SELECT * FROM data_integrity_anomalies ORDER BY detectedAt DESC")
+    suspend fun getAnomaliesList(): List<com.example.data.entity.DataIntegrityAnomalyEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAnomaly(anomaly: com.example.data.entity.DataIntegrityAnomalyEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAnomalies(anomalies: List<com.example.data.entity.DataIntegrityAnomalyEntity>)
+}
+
