@@ -207,6 +207,24 @@ All endpoints return structured JSON with timestamps, success flags, and machine
 
 ---
 
+### 4.12 `GET /api/audit/education/concepts`
+- **URL:** `/api/audit/education/concepts`
+- **Method:** `GET`
+- **Authentication:** None (Read-Only)
+- **Purpose:** Inspect deterministic market concepts (Order Book dynamics, Slippage, Risk capping).
+- **Current Status:** `VERIFIED`
+
+---
+
+### 4.13 `GET /api/audit/risk/rules`
+- **URL:** `/api/audit/risk/rules`
+- **Method:** `GET`
+- **Authentication:** None (Read-Only)
+- **Purpose:** Inspect mathematical risk capping formulas and circuit breaker invariants.
+- **Current Status:** `VERIFIED`
+
+---
+
 ## 5. Test Execution Protocol for AI Auditor
 
 1. **How AI Contractor triggers a test run:**

@@ -133,11 +133,77 @@ class AuditRepository(private val db: AppDatabase) {
                 )
             )
 
+            // Initialize Deterministic Market Education Foundation (Stage 2 foundation)
+            val existingConcepts = db.marketConceptDao().getConceptsList()
+            if (existingConcepts.isEmpty()) {
+                db.marketConceptDao().insertConcepts(
+                    listOf(
+                        com.example.data.entity.MarketConceptEntity(
+                            conceptCode = "ORDER_BOOK_DYNAMICS",
+                            title = "Order Book Dynamics & Depth",
+                            category = "ORDER_BOOK",
+                            description = "Understanding bid/ask queues, liquidity aggregation, and market depth without synthetic assumptions.",
+                            difficultyLevel = 1,
+                            deterministicRulesJson = """{"type":"ORDER_BOOK","rules":["Bids < Asks","Spread = Min(Ask) - Max(Bid)"]}""",
+                            isVerified = true
+                        ),
+                        com.example.data.entity.MarketConceptEntity(
+                            conceptCode = "SLIPPAGE_AND_SPREAD",
+                            title = "Slippage & Spread Impact",
+                            category = "LIQUIDITY",
+                            description = "Mathematical calculation of execution slippage under varying book depth constraints.",
+                            difficultyLevel = 1,
+                            deterministicRulesJson = """{"type":"SLIPPAGE","formula":"abs(ExecPrice - ExpectedPrice) / ExpectedPrice"}""",
+                            isVerified = true
+                        ),
+                        com.example.data.entity.MarketConceptEntity(
+                            conceptCode = "POSITION_RISK_LIMIT",
+                            title = "Fixed Capital & Position Risk Capping",
+                            category = "RISK_CONTROL",
+                            description = "Deterministic mathematical limits strictly capping per-trade exposure to protect capital.",
+                            difficultyLevel = 2,
+                            deterministicRulesJson = """{"type":"RISK_CAP","maxPositionRiskPct":0.02,"maxDrawdownPct":0.05}""",
+                            isVerified = true
+                        )
+                    )
+                )
+            }
+
+            val existingRules = db.riskRuleDao().getRiskRulesList()
+            if (existingRules.isEmpty()) {
+                db.riskRuleDao().insertRiskRules(
+                    listOf(
+                        com.example.data.entity.RiskRuleEntity(
+                            ruleCode = "MAX_PORTFOLIO_RISK",
+                            name = "Maximum Single Trade Risk",
+                            category = "POSITION_SIZING",
+                            formulaOrLogic = "RiskAmount <= TotalEquity * 0.02",
+                            maxAllowedRiskPct = 0.02,
+                            isMandatory = true
+                        ),
+                        com.example.data.entity.RiskRuleEntity(
+                            ruleCode = "MAX_DRAWDOWN_CIRCUIT_BREAKER",
+                            name = "Systemic Drawdown Circuit Breaker",
+                            category = "DRAWDOWN_LIMIT",
+                            formulaOrLogic = "If CurrentDrawdown >= 0.05 Then FreezeAllOrders",
+                            maxAllowedRiskPct = 0.05,
+                            isMandatory = true
+                        )
+                    )
+                )
+            }
+
             logAudit(
                 level = "INFO",
                 category = "SYSTEM",
-                message = "PARSA System Environment and Audit Database initialized successfully in Stage PROJECT_INITIALIZATION"
+                message = "PARSA System Environment and Audit Database initialized successfully with Market Education Foundation."
             )
         }
     }
+
+    suspend fun getMarketConcepts(): List<com.example.data.entity.MarketConceptEntity> =
+        db.marketConceptDao().getConceptsList()
+
+    suspend fun getRiskRules(): List<com.example.data.entity.RiskRuleEntity> =
+        db.riskRuleDao().getRiskRulesList()
 }

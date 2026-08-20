@@ -320,7 +320,7 @@ class AuditApiService(
             ),
             experiments = experiments,
             memory_status = "CONFIGURED",
-            last_commit = "861c763 feat(init): PARSA Project Initialization & Audit System Setup",
+            last_commit = "7459f75 test(audit): Add comprehensive Robolectric test coverage for all DAOs, test engine and full state API",
             last_test_run = latestTest?.startedAt
         )
 
@@ -332,9 +332,31 @@ class AuditApiService(
         )
     }
 
+    suspend fun getEducationConcepts(): ApiResponse<List<com.example.data.entity.MarketConceptEntity>> {
+        val concepts = repository.getMarketConcepts()
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/education/concepts",
+            data = concepts,
+            status = "CONNECTED"
+        )
+    }
+
+    suspend fun getRiskRules(): ApiResponse<List<com.example.data.entity.RiskRuleEntity>> {
+        val rules = repository.getRiskRules()
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/risk/rules",
+            data = rules,
+            status = "CONNECTED"
+        )
+    }
+
     suspend fun dispatchRoute(method: String, path: String): ApiResponse<out Any> {
         return when {
             method == "GET" && path == "/api/audit/full-state" -> getFullState()
+            method == "GET" && path == "/api/audit/education/concepts" -> getEducationConcepts()
+            method == "GET" && path == "/api/audit/risk/rules" -> getRiskRules()
             method == "GET" && path == "/api/audit/status" -> getStatus()
             method == "GET" && path == "/api/audit/build" -> getBuild()
             method == "GET" && path == "/api/audit/project-stage" -> getProjectStage()

@@ -5,17 +5,23 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.example.data.dao.AuditLogDao
+import com.example.data.dao.EducationProgressDao
 import com.example.data.dao.ExperimentDao
+import com.example.data.dao.MarketConceptDao
 import com.example.data.dao.MemoryVersionDao
 import com.example.data.dao.ModelVersionDao
+import com.example.data.dao.RiskRuleDao
 import com.example.data.dao.SystemStateDao
 import com.example.data.dao.TestResultDao
 import com.example.data.dao.TestRunDao
 import com.example.data.dao.UserDao
 import com.example.data.entity.AuditLogEntity
+import com.example.data.entity.EducationProgressEntity
 import com.example.data.entity.ExperimentEntity
+import com.example.data.entity.MarketConceptEntity
 import com.example.data.entity.MemoryVersionEntity
 import com.example.data.entity.ModelVersionEntity
+import com.example.data.entity.RiskRuleEntity
 import com.example.data.entity.SystemStateEntity
 import com.example.data.entity.TestResultEntity
 import com.example.data.entity.TestRunEntity
@@ -30,9 +36,12 @@ import com.example.data.entity.UserEntity
         TestResultEntity::class,
         AuditLogEntity::class,
         ModelVersionEntity::class,
-        MemoryVersionEntity::class
+        MemoryVersionEntity::class,
+        MarketConceptEntity::class,
+        RiskRuleEntity::class,
+        EducationProgressEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -44,6 +53,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun auditLogDao(): AuditLogDao
     abstract fun modelVersionDao(): ModelVersionDao
     abstract fun memoryVersionDao(): MemoryVersionDao
+    abstract fun marketConceptDao(): MarketConceptDao
+    abstract fun riskRuleDao(): RiskRuleDao
+    abstract fun educationProgressDao(): EducationProgressDao
 
     companion object {
         @Volatile

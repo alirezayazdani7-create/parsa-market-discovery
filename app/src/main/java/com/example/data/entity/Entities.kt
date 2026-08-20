@@ -94,3 +94,41 @@ data class MemoryVersionEntity(
     val recordCount: Long = 0,
     val updatedAt: Long = System.currentTimeMillis()
 )
+
+@Entity(tableName = "market_concepts")
+data class MarketConceptEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val conceptCode: String,
+    val title: String,
+    val category: String, // "MARKET_STRUCTURE", "ORDER_BOOK", "LIQUIDITY", "VOLATILITY", "RISK_CONTROL"
+    val description: String,
+    val difficultyLevel: Int = 1, // 1: Beginner, 2: Intermediate, 3: Advanced
+    val deterministicRulesJson: String,
+    val isVerified: Boolean = true,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "risk_rules")
+data class RiskRuleEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val ruleCode: String,
+    val name: String,
+    val category: String, // "POSITION_SIZING", "DRAWDOWN_LIMIT", "LEVERAGE_CAP", "EXPOSURE"
+    val formulaOrLogic: String,
+    val maxAllowedRiskPct: Double,
+    val isMandatory: Boolean = true,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "education_progress")
+data class EducationProgressEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val userId: Long,
+    val conceptCode: String,
+    val isCompleted: Boolean = false,
+    val scorePct: Double = 0.0,
+    val lastEvaluatedAt: Long = System.currentTimeMillis()
+)

@@ -119,3 +119,51 @@ interface MemoryVersionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMemoryVersion(memory: MemoryVersionEntity): Long
 }
+
+@Dao
+interface MarketConceptDao {
+    @Query("SELECT * FROM market_concepts ORDER BY difficultyLevel ASC, id ASC")
+    fun getAllConcepts(): Flow<List<com.example.data.entity.MarketConceptEntity>>
+
+    @Query("SELECT * FROM market_concepts ORDER BY difficultyLevel ASC, id ASC")
+    suspend fun getConceptsList(): List<com.example.data.entity.MarketConceptEntity>
+
+    @Query("SELECT * FROM market_concepts WHERE conceptCode = :code LIMIT 1")
+    suspend fun getConceptByCode(code: String): com.example.data.entity.MarketConceptEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertConcept(concept: com.example.data.entity.MarketConceptEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertConcepts(concepts: List<com.example.data.entity.MarketConceptEntity>)
+}
+
+@Dao
+interface RiskRuleDao {
+    @Query("SELECT * FROM risk_rules ORDER BY id ASC")
+    fun getAllRiskRules(): Flow<List<com.example.data.entity.RiskRuleEntity>>
+
+    @Query("SELECT * FROM risk_rules ORDER BY id ASC")
+    suspend fun getRiskRulesList(): List<com.example.data.entity.RiskRuleEntity>
+
+    @Query("SELECT * FROM risk_rules WHERE ruleCode = :code LIMIT 1")
+    suspend fun getRuleByCode(code: String): com.example.data.entity.RiskRuleEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRiskRule(rule: com.example.data.entity.RiskRuleEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRiskRules(rules: List<com.example.data.entity.RiskRuleEntity>)
+}
+
+@Dao
+interface EducationProgressDao {
+    @Query("SELECT * FROM education_progress WHERE userId = :userId")
+    fun getUserProgress(userId: Long): Flow<List<com.example.data.entity.EducationProgressEntity>>
+
+    @Query("SELECT * FROM education_progress WHERE userId = :userId AND conceptCode = :conceptCode LIMIT 1")
+    suspend fun getProgressForConcept(userId: Long, conceptCode: String): com.example.data.entity.EducationProgressEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrUpdateProgress(progress: com.example.data.entity.EducationProgressEntity): Long
+}
