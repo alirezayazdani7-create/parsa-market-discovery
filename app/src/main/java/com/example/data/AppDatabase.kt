@@ -30,9 +30,11 @@ import com.example.data.entity.*
         HistoricalSetupEntity::class,
         HistoricalIndicatorSnapshotEntity::class,
         BatchProcessingCheckpointEntity::class,
-        DiscoveredPatternEntity::class
+        DiscoveredPatternEntity::class,
+        AnalyticalMethodEntity::class,
+        MethodEvaluationEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -58,6 +60,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun historicalIndicatorDao(): HistoricalIndicatorDao
     abstract fun batchProcessingCheckpointDao(): BatchProcessingCheckpointDao
     abstract fun discoveredPatternDao(): DiscoveredPatternDao
+    abstract fun analyticalMethodDao(): AnalyticalMethodDao
+    abstract fun methodEvaluationDao(): MethodEvaluationDao
 
     companion object {
         @Volatile

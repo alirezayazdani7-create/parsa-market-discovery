@@ -420,5 +420,90 @@ data class DiscoveredPatternEntity(
     val discoveredAt: Long = System.currentTimeMillis()
 )
 
+@Entity(
+    tableName = "analytical_methods",
+    indices = [
+        Index(value = ["methodId", "methodVersion"], unique = true),
+        Index(value = ["evidenceGrade"]),
+        Index(value = ["status"]),
+        Index(value = ["timeframe"])
+    ]
+)
+data class AnalyticalMethodEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val methodId: String,
+    val methodVersion: Int = 1,
+    val methodName: String,
+    val hypothesisDescription: String,
+    val indicatorsUsedJson: String, // e.g. ["RSI","SMA20","EMA50","ATR14","BB"]
+    val featuresUsedJson: String,   // e.g. ["MOMENTUM_ACCELERATION","VOLATILITY_RATIO","MARKET_STRUCTURE"]
+    val eventFeaturesUsedJson: String, // e.g. ["POST_HALVING_WINDOW","MACRO_RATE_CYCLE"]
+    val timeframe: String,          // e.g. "1h", "4h", "1d", "MULTI_TIMEFRAME"
+    val assetUniverseJson: String,  // e.g. ["BTC/USDT","ETH/USDT","SOL/USDT","BNB/USDT"]
+    val discoveryPeriod: String,    // e.g. "2018-01-01 to 2021-12-31"
+    val validationPeriod: String,   // e.g. "2022-01-01 to 2023-06-30"
+    val outOfSamplePeriod: String,  // e.g. "2023-07-01 to 2024-12-31"
+    val sampleCount: Int,
+    val positiveOutcomes: Int,
+    val negativeOutcomes: Int,
+    val neutralOutcomes: Int,
+    val baselineSampleCount: Int,
+    val baselinePositiveRate: Double,
+    val methodPositiveRate: Double,
+    val outperformanceVsBaseline: Double,
+    val averageOutcome: Double,
+    val medianOutcome: Double,
+    val dispersion: Double,
+    val volatility: Double,
+    val maxFavorableExcursion: Double = 0.0,
+    val maxAdverseExcursion: Double = 0.0,
+    val maxDrawdown: Double = 0.0,
+    val recoveryTimeMs: Long? = null,
+    val evidenceGrade: String = "EXPLORATORY", // "INSUFFICIENT_DATA", "EXPLORATORY", "WEAK", "REPEATED", "ROBUST", "UNSTABLE", "REJECTED"
+    val status: String = "UNDER_EVALUATION", // "RETAINED", "REJECTED", "INCONCLUSIVE", "UNDER_EVALUATION"
+    val parameterSensitivityScore: Double = 0.0, // 0.0 to 1.0 (lower is more stable)
+    val parameterStabilityGrade: String = "STABLE", // "STABLE", "MODERATE", "SENSITIVE", "UNSTABLE"
+    val crossRegimeStabilityScore: Double = 0.0,
+    val crossAssetStabilityScore: Double = 0.0,
+    val outOfSampleSurvives: Boolean = false,
+    val adversarialPassed: Boolean = false,
+    val failureClassification: String? = null, // "OVERFIT", "INSUFFICIENT_SAMPLE", "REGIME_DEPENDENT", "ASSET_DEPENDENT", "TIMEFRAME_DEPENDENT", "EVENT_DEPENDENT", "PARAMETER_SENSITIVE", "BASELINE_NOT_BEATEN", "OUT_OF_SAMPLE_FAILURE", "DATA_QUALITY_FAILURE", "UNSTABLE_RELATIONSHIP"
+    val failureReasonsJson: String? = null,
+    val limitations: String = "Research hypothesis only — no live signals.",
+    val sourceDataVersion: String = "HISTORICAL_ARCHIVE_V6",
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(
+    tableName = "method_evaluations",
+    indices = [
+        Index(value = ["methodId"]),
+        Index(value = ["evaluationType"]),
+        Index(value = ["passed"])
+    ]
+)
+data class MethodEvaluationEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val evaluationId: String,
+    val methodId: String,
+    val methodVersion: Int,
+    val evaluationType: String, // "WALK_FORWARD", "OUT_OF_SAMPLE", "ADVERSARIAL_SHOCK", "CROSS_REGIME", "CROSS_ASSET", "PARAMETER_SENSITIVITY", "EVENT_AWARE"
+    val targetSymbol: String,
+    val targetTimeframe: String,
+    val evaluationWindow: String,
+    val sampleSize: Int,
+    val successRate: Double,
+    val baselineSuccessRate: Double,
+    val mfe: Double = 0.0,
+    val mae: Double = 0.0,
+    val passed: Boolean,
+    val verdict: String,
+    val detailsJson: String,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+
 
 

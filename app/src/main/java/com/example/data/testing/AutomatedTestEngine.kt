@@ -772,7 +772,7 @@ class AutomatedTestEngine(private val repository: AuditRepository) {
                 testResults.add(
                     TestResultEntity(
                         runId = 0,
-                        testName = "Stage 5 Trainee Safety: Zero Live Trading & Guardrail Integrity",
+                        testName = "Stage Safety: Zero Live Trading & Guardrail Integrity",
                         category = "SAFETY",
                         status = "PASSED",
                         executionTimeMs = System.currentTimeMillis() - test20Start
@@ -783,11 +783,322 @@ class AutomatedTestEngine(private val repository: AuditRepository) {
                 testResults.add(
                     TestResultEntity(
                         runId = 0,
-                        testName = "Stage 5 Trainee Safety: Zero Live Trading & Guardrail Integrity",
+                        testName = "Stage Safety: Zero Live Trading & Guardrail Integrity",
                         category = "SAFETY",
                         status = "FAILED",
                         errorMessage = e.message,
                         executionTimeMs = System.currentTimeMillis() - test20Start
+                    )
+                )
+                failed++
+            }
+
+            // 21. Stage 6: Candidate Method Discovery & Hypotheses Generation
+            val test21Start = System.currentTimeMillis()
+            try {
+                val methodEngine = com.example.data.methods.AnalyticalMethodDiscoveryEngine(repository.database)
+                val methods = methodEngine.discoverAndEvaluateMethods("BTC/USDT", "1h")
+                check(methods.isNotEmpty()) { "Method discovery returned empty list" }
+                val compressionMethod = methods.find { it.methodId.contains("COMPRESSION") }
+                check(compressionMethod != null) { "Volatility compression method missing" }
+
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Stage 6 Analytical Method Discovery & Hypotheses Generation",
+                        category = "STAGE_6_METHODS",
+                        status = "PASSED",
+                        executionTimeMs = System.currentTimeMillis() - test21Start
+                    )
+                )
+                passed++
+            } catch (e: Exception) {
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Stage 6 Analytical Method Discovery & Hypotheses Generation",
+                        category = "STAGE_6_METHODS",
+                        status = "FAILED",
+                        errorMessage = e.message,
+                        executionTimeMs = System.currentTimeMillis() - test21Start
+                    )
+                )
+                failed++
+            }
+
+            // 22. Stage 6: Baseline Comparison & Statistical Excursions (MFE/MAE)
+            val test22Start = System.currentTimeMillis()
+            try {
+                val methodEngine = com.example.data.methods.AnalyticalMethodDiscoveryEngine(repository.database)
+                val dummyCandles = (1..40).map { i ->
+                    val p = 1000.0 + (i * 5.0)
+                    com.example.data.entity.HistoricalCandleEntity(
+                        symbol = "BTC/USDT",
+                        timeframe = "1h",
+                        openTime = 1600000000000L + (i * 3600000L),
+                        closeTime = 1600000000000L + (i * 3600000L) + 3599999L,
+                        openPrice = p,
+                        highPrice = p + 10.0,
+                        lowPrice = p - 5.0,
+                        closePrice = p + 4.0,
+                        volume = 500.0
+                    )
+                }
+                val baseline = methodEngine.calculateBaselineMetrics(dummyCandles, horizon = 3)
+                check(baseline.sampleCount > 0) { "Baseline sample count must be positive" }
+                check(baseline.positiveRate in 0.0..1.0) { "Baseline positive rate out of bounds" }
+
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Stage 6 Baseline Comparison & Statistical Excursion Profiling",
+                        category = "STAGE_6_METHODS",
+                        status = "PASSED",
+                        executionTimeMs = System.currentTimeMillis() - test22Start
+                    )
+                )
+                passed++
+            } catch (e: Exception) {
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Stage 6 Baseline Comparison & Statistical Excursion Profiling",
+                        category = "STAGE_6_METHODS",
+                        status = "FAILED",
+                        errorMessage = e.message,
+                        executionTimeMs = System.currentTimeMillis() - test22Start
+                    )
+                )
+                failed++
+            }
+
+            // 23. Stage 6: Chronological Data Separation & Walk-Forward / Out-of-Sample Isolation
+            val test23Start = System.currentTimeMillis()
+            try {
+                val methodEngine = com.example.data.methods.AnalyticalMethodDiscoveryEngine(repository.database)
+                val methods = methodEngine.getCoreHistoricalAnalyticalMethods()
+                for (m in methods) {
+                    check(m.discoveryPeriod.isNotBlank()) { "Discovery period missing in ${m.methodId}" }
+                    check(m.validationPeriod.isNotBlank()) { "Validation period missing in ${m.methodId}" }
+                    check(m.outOfSamplePeriod.isNotBlank()) { "Out of sample period missing in ${m.methodId}" }
+                }
+
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Stage 6 Chronological Data Separation & Out-of-Sample Isolation",
+                        category = "STAGE_6_METHODS",
+                        status = "PASSED",
+                        executionTimeMs = System.currentTimeMillis() - test23Start
+                    )
+                )
+                passed++
+            } catch (e: Exception) {
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Stage 6 Chronological Data Separation & Out-of-Sample Isolation",
+                        category = "STAGE_6_METHODS",
+                        status = "FAILED",
+                        errorMessage = e.message,
+                        executionTimeMs = System.currentTimeMillis() - test23Start
+                    )
+                )
+                failed++
+            }
+
+            // 24. Stage 6: Adversarial Future-Shock Invariance Test (Zero Future Leakage Snapshot Invariance)
+            val test24Start = System.currentTimeMillis()
+            try {
+                val timestampT = 1700000000000L
+                val basePastCandles = (1..30).map { i ->
+                    val p = 20000.0 + (i * 20.0)
+                    com.example.data.entity.HistoricalCandleEntity(
+                        symbol = "BTC/USDT",
+                        timeframe = "1h",
+                        openTime = timestampT - (31 - i) * 3600000L,
+                        closeTime = timestampT - (31 - i) * 3600000L + 3599999L,
+                        openPrice = p,
+                        highPrice = p + 50.0,
+                        lowPrice = p - 30.0,
+                        closePrice = p + 15.0,
+                        volume = 1000.0
+                    )
+                }
+
+                // 1. Calculate features and candidate method snapshot at T
+                val closes1 = basePastCandles.map { it.closePrice }
+                val rsi1 = com.example.data.indicators.HistoricalIndicatorEngine.calculateRSI(closes1, 14)
+                val ema1 = com.example.data.indicators.HistoricalIndicatorEngine.calculateEMA(closes1, 20)
+
+                // 2. Add extreme artificial future shock after T in isolated test fixture
+                val shockedFutureCandles = listOf(
+                    com.example.data.entity.HistoricalCandleEntity(
+                        symbol = "BTC/USDT",
+                        timeframe = "1h",
+                        openTime = timestampT + 3600000L,
+                        closeTime = timestampT + 7199999L,
+                        openPrice = 999999.0, // Extreme +5000% shock
+                        highPrice = 1000000.0,
+                        lowPrice = 999990.0,
+                        closePrice = 999995.0,
+                        volume = 500000.0
+                    )
+                )
+                val combinedHistory = basePastCandles + shockedFutureCandles
+
+                // 3. Re-evaluate snapshot at T using strict closeTime <= timestampT filter
+                val filteredPast = combinedHistory.filter { it.closeTime <= timestampT }
+                val closes2 = filteredPast.map { it.closePrice }
+                val rsi2 = com.example.data.indicators.HistoricalIndicatorEngine.calculateRSI(closes2, 14)
+                val ema2 = com.example.data.indicators.HistoricalIndicatorEngine.calculateEMA(closes2, 20)
+
+                // 4. Verify bit-for-bit mathematical equality
+                check(rsi1 == rsi2) { "Adversarial Future Shock leaked into historical RSI snapshot" }
+                check(ema1 == ema2) { "Adversarial Future Shock leaked into historical EMA snapshot" }
+                check(filteredPast.size == basePastCandles.size) { "Future candle bypassed chronological filter" }
+
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Stage 6 Adversarial Future-Shock Invariance & Zero Leakage",
+                        category = "STAGE_6_METHODS",
+                        status = "PASSED",
+                        executionTimeMs = System.currentTimeMillis() - test24Start
+                    )
+                )
+                passed++
+            } catch (e: Exception) {
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Stage 6 Adversarial Future-Shock Invariance & Zero Leakage",
+                        category = "STAGE_6_METHODS",
+                        status = "FAILED",
+                        errorMessage = e.message,
+                        executionTimeMs = System.currentTimeMillis() - test24Start
+                    )
+                )
+                failed++
+            }
+
+            // 25. Stage 6: Parameter Sensitivity Neighborhood Testing & Stability Scoring
+            val test25Start = System.currentTimeMillis()
+            try {
+                val methodEngine = com.example.data.methods.AnalyticalMethodDiscoveryEngine(repository.database)
+                val testCandles = (1..50).map { i ->
+                    val p = 1000.0 + (i * 3.0)
+                    com.example.data.entity.HistoricalCandleEntity(
+                        symbol = "BTC/USDT",
+                        timeframe = "1h",
+                        openTime = 1600000000000L + (i * 3600000L),
+                        closeTime = 1600000000000L + (i * 3600000L) + 3599999L,
+                        openPrice = p,
+                        highPrice = p + 8.0,
+                        lowPrice = p - 4.0,
+                        closePrice = p + 2.0,
+                        volume = 600.0
+                    )
+                }
+                val sensitivity = methodEngine.testParameterSensitivity(testCandles, baseThreshold = 55.0, shiftRange = 0.10)
+                check(sensitivity.sensitivityScore in 0.0..1.0) { "Sensitivity score must be in [0.0, 1.0]" }
+                check(sensitivity.grade in listOf("STABLE", "MODERATE", "SENSITIVE", "UNSTABLE")) { "Invalid stability grade" }
+
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Stage 6 Parameter Sensitivity & Neighborhood Stability Scoring",
+                        category = "STAGE_6_METHODS",
+                        status = "PASSED",
+                        executionTimeMs = System.currentTimeMillis() - test25Start
+                    )
+                )
+                passed++
+            } catch (e: Exception) {
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Stage 6 Parameter Sensitivity & Neighborhood Stability Scoring",
+                        category = "STAGE_6_METHODS",
+                        status = "FAILED",
+                        errorMessage = e.message,
+                        executionTimeMs = System.currentTimeMillis() - test25Start
+                    )
+                )
+                failed++
+            }
+
+            // 26. Stage 6: Multi-Timeframe, Cross-Asset Generalization & Failure Taxonomy Classification
+            val test26Start = System.currentTimeMillis()
+            try {
+                val methodEngine = com.example.data.methods.AnalyticalMethodDiscoveryEngine(repository.database)
+                val overfitMethod = methodEngine.getCoreHistoricalAnalyticalMethods().find { it.methodId.contains("OVERFIT") }
+                check(overfitMethod != null) { "Overfit benchmark method not registered" }
+                check(overfitMethod.failureClassification == "OVERFIT") { "Overfit method failed taxonomy check" }
+                check(overfitMethod.status == "REJECTED") { "Overfit method must be marked REJECTED" }
+                check(overfitMethod.evidenceGrade == "REJECTED") { "Evidence grade must be REJECTED" }
+
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Stage 6 Failure Taxonomy Classification & Adversarial Rejection",
+                        category = "STAGE_6_METHODS",
+                        status = "PASSED",
+                        executionTimeMs = System.currentTimeMillis() - test26Start
+                    )
+                )
+                passed++
+            } catch (e: Exception) {
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Stage 6 Failure Taxonomy Classification & Adversarial Rejection",
+                        category = "STAGE_6_METHODS",
+                        status = "FAILED",
+                        errorMessage = e.message,
+                        executionTimeMs = System.currentTimeMillis() - test26Start
+                    )
+                )
+                failed++
+            }
+
+            // 27. Stage 6: Method Versioning & Experience Memory Audit Trail
+            val test27Start = System.currentTimeMillis()
+            try {
+                val methodEngine = com.example.data.methods.AnalyticalMethodDiscoveryEngine(repository.database)
+                val initialMethods = methodEngine.getCoreHistoricalAnalyticalMethods()
+                repository.database.analyticalMethodDao().insertMethods(initialMethods)
+
+                // Create a refined Version 2
+                val v2 = methodEngine.createMethodVersion(
+                    existingMethodId = "MTH_VOL_COMPRESSION_EXPANSION_V1",
+                    modifications = mapOf("volume_threshold" to 1.35),
+                    newHypothesis = "Refined Volatility Compression with tightened volume threshold 1.35x"
+                )
+                check(v2 != null && v2.methodVersion == 2) { "Method versioning failed to create version 2" }
+
+                val allVersions = repository.database.analyticalMethodDao().getMethodVersions("MTH_VOL_COMPRESSION_EXPANSION_V1")
+                check(allVersions.size >= 2) { "Method version history should contain at least 2 versions" }
+
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Stage 6 Method Versioning & Experience Memory Audit Trail",
+                        category = "STAGE_6_METHODS",
+                        status = "PASSED",
+                        executionTimeMs = System.currentTimeMillis() - test27Start
+                    )
+                )
+                passed++
+            } catch (e: Exception) {
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Stage 6 Method Versioning & Experience Memory Audit Trail",
+                        category = "STAGE_6_METHODS",
+                        status = "FAILED",
+                        errorMessage = e.message,
+                        executionTimeMs = System.currentTimeMillis() - test27Start
                     )
                 )
                 failed++

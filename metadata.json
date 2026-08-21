@@ -1,7 +1,8 @@
 {
   "name": "PARSA",
-  "description": "PARSA Stage 5 — Deep Historical Market Learning, Pattern Discovery & Experience Memory with Anti-Overfitting Evidence Grading",
+  "description": "PARSA Stage 6 — Autonomous Analytical Method Discovery, Baseline Comparison & Out-of-Sample Validation with Zero Future Leakage",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
+
 

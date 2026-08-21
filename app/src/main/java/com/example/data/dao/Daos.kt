@@ -365,5 +365,66 @@ interface DiscoveredPatternDao {
     suspend fun insertPatterns(patterns: List<DiscoveredPatternEntity>)
 }
 
+@Dao
+interface AnalyticalMethodDao {
+    @Query("SELECT * FROM analytical_methods ORDER BY createdAt DESC")
+    fun getAllMethods(): Flow<List<AnalyticalMethodEntity>>
+
+    @Query("SELECT * FROM analytical_methods ORDER BY createdAt DESC")
+    suspend fun getMethodsList(): List<AnalyticalMethodEntity>
+
+    @Query("SELECT * FROM analytical_methods WHERE methodId = :methodId ORDER BY methodVersion DESC")
+    suspend fun getMethodVersions(methodId: String): List<AnalyticalMethodEntity>
+
+    @Query("SELECT * FROM analytical_methods WHERE methodId = :methodId AND methodVersion = :version LIMIT 1")
+    suspend fun getMethodByIdAndVersion(methodId: String, version: Int): AnalyticalMethodEntity?
+
+    @Query("SELECT * FROM analytical_methods WHERE methodId = :methodId ORDER BY methodVersion DESC LIMIT 1")
+    suspend fun getLatestMethod(methodId: String): AnalyticalMethodEntity?
+
+    @Query("SELECT * FROM analytical_methods WHERE evidenceGrade = :grade ORDER BY methodPositiveRate DESC")
+    suspend fun getMethodsByGrade(grade: String): List<AnalyticalMethodEntity>
+
+    @Query("SELECT * FROM analytical_methods WHERE status = :status ORDER BY createdAt DESC")
+    suspend fun getMethodsByStatus(status: String): List<AnalyticalMethodEntity>
+
+    @Query("SELECT * FROM analytical_methods WHERE failureClassification IS NOT NULL")
+    suspend fun getFailedMethods(): List<AnalyticalMethodEntity>
+
+    @Query("SELECT COUNT(*) FROM analytical_methods")
+    suspend fun getMethodsCount(): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMethod(method: AnalyticalMethodEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMethods(methods: List<AnalyticalMethodEntity>)
+
+    @Update
+    suspend fun updateMethod(method: AnalyticalMethodEntity)
+}
+
+@Dao
+interface MethodEvaluationDao {
+    @Query("SELECT * FROM method_evaluations ORDER BY timestamp DESC")
+    fun getAllEvaluations(): Flow<List<MethodEvaluationEntity>>
+
+    @Query("SELECT * FROM method_evaluations WHERE methodId = :methodId ORDER BY timestamp DESC")
+    suspend fun getEvaluationsForMethod(methodId: String): List<MethodEvaluationEntity>
+
+    @Query("SELECT * FROM method_evaluations WHERE evaluationType = :type ORDER BY timestamp DESC")
+    suspend fun getEvaluationsByType(type: String): List<MethodEvaluationEntity>
+
+    @Query("SELECT * FROM method_evaluations ORDER BY timestamp DESC LIMIT :limit")
+    suspend fun getRecentEvaluations(limit: Int = 100): List<MethodEvaluationEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEvaluation(evaluation: MethodEvaluationEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEvaluations(evaluations: List<MethodEvaluationEntity>)
+}
+
+
 
 

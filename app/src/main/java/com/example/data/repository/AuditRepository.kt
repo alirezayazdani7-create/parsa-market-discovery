@@ -115,10 +115,13 @@ class AuditRepository(val db: AppDatabase) {
                 )
             )
 
-            updateSystemState("CURRENT_STAGE", "PROJECT_INITIALIZATION", "PROJECT_INITIALIZATION")
-            updateSystemState("BUILD_STATUS", "PASSED", "PROJECT_INITIALIZATION")
-            updateSystemState("GITHUB_INTEGRATION", "REQUIRES_USER_ACTION", "PROJECT_INITIALIZATION")
-            updateSystemState("ENVIRONMENT", "ANDROID_COMPOSE_WEB_STREAMING", "PROJECT_INITIALIZATION")
+            updateSystemState("CURRENT_STAGE", "STAGE_6_ANALYTICAL_METHOD_DISCOVERY", "STAGE_6_ANALYTICAL_METHOD_DISCOVERY")
+            updateSystemState("CURRENT_PROJECT_STAGE", "STAGE_6_ANALYTICAL_METHOD_DISCOVERY", "STAGE_6_ANALYTICAL_METHOD_DISCOVERY")
+            updateSystemState("BUILD_STATUS", "PASSED", "STAGE_6_ANALYTICAL_METHOD_DISCOVERY")
+            updateSystemState("GITHUB_INTEGRATION", "REQUIRES_USER_ACTION", "STAGE_6_ANALYTICAL_METHOD_DISCOVERY")
+            updateSystemState("ENVIRONMENT", "ANDROID_COMPOSE_WEB_STREAMING", "STAGE_6_ANALYTICAL_METHOD_DISCOVERY")
+            updateSystemState("TRADE_EXECUTION_ENGINE", "DISABLED", "STAGE_6_ANALYTICAL_METHOD_DISCOVERY")
+            updateSystemState("REAL_TIME_PREDICTIONS", "DISABLED", "STAGE_6_ANALYTICAL_METHOD_DISCOVERY")
 
             db.memoryVersionDao().insertMemoryVersion(
                 MemoryVersionEntity(
@@ -273,6 +276,29 @@ class AuditRepository(val db: AppDatabase) {
 
     suspend fun getDiscoveredPatternById(patternId: String): com.example.data.entity.DiscoveredPatternEntity? =
         db.discoveredPatternDao().getPatternById(patternId)
+
+    suspend fun getAnalyticalMethods(): List<com.example.data.entity.AnalyticalMethodEntity> =
+        db.analyticalMethodDao().getMethodsList()
+
+    suspend fun getAnalyticalMethodVersions(methodId: String): List<com.example.data.entity.AnalyticalMethodEntity> =
+        db.analyticalMethodDao().getMethodVersions(methodId)
+
+    suspend fun getAnalyticalMethodByIdAndVersion(methodId: String, version: Int): com.example.data.entity.AnalyticalMethodEntity? =
+        db.analyticalMethodDao().getMethodByIdAndVersion(methodId, version)
+
+    suspend fun getAnalyticalMethodsByGrade(grade: String): List<com.example.data.entity.AnalyticalMethodEntity> =
+        db.analyticalMethodDao().getMethodsByGrade(grade)
+
+    suspend fun getAnalyticalMethodsByStatus(status: String): List<com.example.data.entity.AnalyticalMethodEntity> =
+        db.analyticalMethodDao().getMethodsByStatus(status)
+
+    suspend fun getFailedAnalyticalMethods(): List<com.example.data.entity.AnalyticalMethodEntity> =
+        db.analyticalMethodDao().getFailedMethods()
+
+    suspend fun getMethodEvaluations(methodId: String? = null): List<com.example.data.entity.MethodEvaluationEntity> =
+        if (methodId != null) db.methodEvaluationDao().getEvaluationsForMethod(methodId)
+        else db.methodEvaluationDao().getRecentEvaluations(100)
 }
+
 
 
