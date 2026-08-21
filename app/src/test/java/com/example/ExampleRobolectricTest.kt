@@ -427,6 +427,187 @@ class ExampleRobolectricTest {
 
     val setups = apiService.dispatchRoute("GET", "/api/audit/setups")
     assertTrue(setups.success)
+
+    val experiences = apiService.dispatchRoute("GET", "/api/audit/learning/experiences")
+    assertTrue(experiences.success)
+
+    val insights = apiService.dispatchRoute("GET", "/api/audit/learning/insights")
+    assertTrue(insights.success)
+  }
+
+  @Test
+  fun stage4_adversarial_zero_future_leakage_in_event_condition_analyzer() = runBlocking {
+    val setupAnalyzer = com.example.data.events.EventConditionAnalyzer(db)
+    val eventTime = 10000000L
+
+    val baseEvent = com.example.data.entity.HistoricalEventEntity(
+      eventId = "EVT_ADVERSARIAL_TEST",
+      eventTimestamp = eventTime,
+      source = "VERIFIED_EXCHANGE_RECORD",
+      title = "Historical Benchmark Event",
+      eventType = "ETF_DECISION",
+      category = "REGULATORY",
+      severity = "CRITICAL",
+      primarySymbol = "BTC/USDT",
+      affectedAssetsJson = """["BTC/USDT"]""",
+      sourceUrl = "https://sec.gov",
+      confidence = 1.0,
+      marketImpactStatus = "ANALYZED"
+    )
+
+    // Pre-event candles strictly <= eventTime
+    val pastCandles = (1..30).map { i ->
+      val p = 40000.0 + i * 100.0
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1h", openTime = eventTime - (31 - i) * 3600000L, closeTime = eventTime - (31 - i) * 3600000L + 3599999L,
+        openPrice = p, highPrice = p + 200.0, lowPrice = p - 100.0, closePrice = p + 50.0, volume = 500.0
+      )
+    }
+
+    // Future candles scenario A (normal upward continuation)
+    val futureCandlesNormal = (1..5).map { i ->
+      val p = 45000.0 + i * 200.0
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1h", openTime = eventTime + (i - 1) * 3600000L + 1L, closeTime = eventTime + i * 3600000L,
+        openPrice = p, highPrice = p + 100.0, lowPrice = p - 100.0, closePrice = p + 50.0, volume = 600.0
+      )
+    }
+
+    // Future candles scenario B (adversarial massive crash shock injected into future)
+    val futureCandlesCrash = (1..5).map { i ->
+      val p = 10000.0 - i * 1000.0
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1h", openTime = eventTime + (i - 1) * 3600000L + 1L, closeTime = eventTime + i * 3600000L,
+        openPrice = p, highPrice = p + 50.0, lowPrice = p - 500.0, closePrice = p - 400.0, volume = 50000.0
+      )
+    }
+
+    val setupNormal = setupAnalyzer.analyzeSetup(baseEvent, "BTC/USDT", pastCandles, futureCandlesNormal, "1h")
+    val setupCrash = setupAnalyzer.analyzeSetup(baseEvent, "BTC/USDT", pastCandles, futureCandlesCrash, "1h")
+
+    // The historical prediction, marketRegime, trend, volumeState, volatilityState, and indicator state MUST be 100% invariant
+    assertEquals(setupNormal.historicalPrediction, setupCrash.historicalPrediction)
+    assertEquals(setupNormal.marketRegime, setupCrash.marketRegime)
+    assertEquals(setupNormal.trend, setupCrash.trend)
+    assertEquals(setupNormal.volumeState, setupCrash.volumeState)
+    assertEquals(setupNormal.volatilityState, setupCrash.volatilityState)
+    assertEquals(setupNormal.indicatorStatesJson, setupCrash.indicatorStatesJson)
+
+    // Only the post-event evaluation differs as expected
+    assertEquals("BULLISH_EXPANSION", setupNormal.actualFutureOutcome)
+    assertEquals("BEARISH_CASCADE", setupCrash.actualFutureOutcome)
+  }
+
+  @Test
+  fun stage4_all_seven_horizons_excursion_and_unavailable_boundary_verification() = runBlocking {
+    val impactAnalyzer = com.example.data.events.EventImpactAnalyzer(db)
+    val eventTime = 100000000L
+
+    // Historical dataset providing data up to 4 hours post-event, but NOT 24 hours
+    val candles = mutableListOf<com.example.data.entity.HistoricalCandleEntity>()
+    // Pre-event
+    candles.add(com.example.data.entity.HistoricalCandleEntity(
+      symbol = "ETH/USDT", timeframe = "1m", openTime = eventTime - 60000L, closeTime = eventTime - 1L,
+      openPrice = 2000.0, highPrice = 2010.0, lowPrice = 1995.0, closePrice = 2000.0, volume = 100.0
+    ))
+    candles.add(com.example.data.entity.HistoricalCandleEntity(
+      symbol = "ETH/USDT", timeframe = "1m", openTime = eventTime, closeTime = eventTime + 59999L,
+      openPrice = 2000.0, highPrice = 2050.0, lowPrice = 1990.0, closePrice = 2040.0, volume = 500.0
+    ))
+
+    // Add candles for 1m, 5m, 15m, 30m, 1h, 4h horizons
+    val offsets = listOf(60000L, 300000L, 900000L, 1800000L, 3600000L, 14400000L)
+    for (offset in offsets) {
+      val t = eventTime + offset
+      candles.add(com.example.data.entity.HistoricalCandleEntity(
+        symbol = "ETH/USDT", timeframe = "1m", openTime = t - 60000L, closeTime = t,
+        openPrice = 2040.0, highPrice = 2100.0, lowPrice = 1980.0, closePrice = 2080.0, volume = 300.0
+      ))
+    }
+
+    val impacts = impactAnalyzer.analyzeEventImpact("EVT_ETH_HORIZONS", "ETH/USDT", eventTime, candles)
+    val impactMap = impacts.associateBy { it.horizon }
+
+    // Horizons 1m through 4h must be VALID with real excursion metrics
+    val validHorizons = listOf("1m", "5m", "15m", "30m", "1h", "4h")
+    for (h in validHorizons) {
+      val imp = impactMap[h]
+      assertNotNull(imp)
+      assertEquals("VALID", imp!!.status)
+      assertTrue(imp.priceAtEvent == 2000.0)
+      assertTrue(imp.highLowExcursion >= 0.0)
+      assertTrue(imp.maxFavorableExcursion >= 0.0)
+      assertTrue(imp.impactScore >= 0.0)
+    }
+
+    // 24h horizon must strictly be DATA_UNAVAILABLE without fabricating data
+    val imp24h = impactMap["24h"]
+    assertNotNull(imp24h)
+    assertEquals("DATA_UNAVAILABLE", imp24h!!.status)
+    assertEquals(0.0, imp24h.priceAfter, 0.0001)
+  }
+
+  @Test
+  fun stage4_data_integrity_anomaly_detection_suite() = runBlocking {
+    val integrityEngine = com.example.data.integrity.DataIntegrityEngine(db)
+
+    // 1. Missing candles / time gap detection
+    val candlesWithGap = listOf(
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "SOL/USDT", timeframe = "1h", openTime = 1000000L, closeTime = 4599999L,
+        openPrice = 100.0, highPrice = 105.0, lowPrice = 98.0, closePrice = 103.0, volume = 100.0
+      ),
+      // 5 hour gap
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "SOL/USDT", timeframe = "1h", openTime = 22600000L, closeTime = 26199999L,
+        openPrice = 103.0, highPrice = 106.0, lowPrice = 101.0, closePrice = 105.0, volume = 120.0
+      )
+    )
+    val anomalies = integrityEngine.auditCandleStream("SOL/USDT", "1h", candlesWithGap, expectedIntervalMs = 3600000L)
+    assertTrue(anomalies.any { it.anomalyType == "ABNORMAL_GAP" })
+
+    // 2. Impossible prices detection
+    val candlesWithNegative = listOf(
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BNB/USDT", timeframe = "1h", openTime = 1000000L, closeTime = 4599999L,
+        openPrice = -50.0, highPrice = 100.0, lowPrice = -60.0, closePrice = 80.0, volume = 100.0
+      )
+    )
+    val priceAnomalies = integrityEngine.auditCandleStream("BNB/USDT", "1h", candlesWithNegative, expectedIntervalMs = 3600000L)
+    assertTrue(priceAnomalies.any { it.anomalyType == "IMPOSSIBLE_PRICE" })
+  }
+
+  @Test
+  fun stage4_multi_asset_cross_validation_btc_eth_sol_bnb() = runBlocking {
+    val learningEngine = com.example.data.learning.HistoricalLearningEngine(db)
+    val universeManager = com.example.data.universe.MarketUniverseManager(db)
+    universeManager.initializeUniverseIfEmpty()
+
+    val assets = listOf("BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT")
+    for (asset in assets) {
+      val meta = universeManager.getAsset(asset)
+      assertNotNull(meta)
+      assertTrue(meta!!.symbol == asset)
+    }
+
+    // Verify cross asset calculation across BTC and SOL
+    val btc = (1..20).map { i ->
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1d", openTime = i * 86400000L, closeTime = (i + 1) * 86400000L - 1,
+        openPrice = 30000.0 + i * 200.0, highPrice = 30500.0 + i * 200.0, lowPrice = 29800.0 + i * 200.0, closePrice = 30200.0 + i * 200.0, volume = 1000.0
+      )
+    }
+    val sol = (1..20).map { i ->
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "SOL/USDT", timeframe = "1d", openTime = i * 86400000L, closeTime = (i + 1) * 86400000L - 1,
+        openPrice = 80.0 + i * 2.0, highPrice = 85.0 + i * 2.0, lowPrice = 78.0 + i * 2.0, closePrice = 82.0 + i * 2.0, volume = 5000.0
+      )
+    }
+
+    val insight = learningEngine.calculateCrossAssetMetrics("BTC/USDT", "SOL/USDT", btc, sol)
+    assertNotNull(insight)
+    assertTrue(insight!!.statisticalConfidence >= 0.8)
+    assertTrue(insight.sampleSize >= 18)
   }
 
   @Test
