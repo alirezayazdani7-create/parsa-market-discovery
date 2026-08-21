@@ -261,6 +261,69 @@ All endpoints return structured JSON with timestamps, success flags, and machine
 
 ---
 
+### 4.18 `GET /api/audit/data-status`
+- **URL:** `/api/audit/data-status`
+- **Method:** `GET`
+- **Authentication:** None (Read-Only)
+- **Purpose:** Query data availability and quality status across universe assets and multi-timeframe resolutions.
+- **Current Status:** `VERIFIED`
+
+---
+
+### 4.19 `GET /api/audit/data-quality`
+- **URL:** `/api/audit/data-quality`
+- **Method:** `GET`
+- **Authentication:** None (Read-Only)
+- **Purpose:** Retrieve summary counts and breakdown of detected anomalies across the market universe.
+- **Current Status:** `VERIFIED`
+
+---
+
+### 4.20 `GET /api/audit/historical-learning`
+- **URL:** `/api/audit/historical-learning`
+- **Method:** `GET`
+- **Authentication:** None (Read-Only)
+- **Purpose:** Retrieve chronological walk-forward learning status, future leakage invariants, and cross-asset statistical synthesis.
+- **Current Status:** `VERIFIED`
+
+---
+
+### 4.21 `GET /api/audit/indicators`
+- **URL:** `/api/audit/indicators`
+- **Method:** `GET`
+- **Authentication:** None (Read-Only)
+- **Purpose:** Inspect indicator snapshot status (SMA, EMA, WMA, RSI, MACD, BB, ATR, ADX, Stoch, CCI, ROC, VWAP, OBV, etc.) calculated strictly without future leakage.
+- **Current Status:** `VERIFIED`
+
+---
+
+### 4.22 `GET /api/audit/events`
+- **URL:** `/api/audit/events`
+- **Method:** `GET`
+- **Authentication:** None (Read-Only)
+- **Purpose:** Query verified historical market events (Halvings, ETF approvals, FTX bankruptcy, The Merge, Genesis).
+- **Current Status:** `VERIFIED`
+
+---
+
+### 4.23 `GET /api/audit/event-impact`
+- **URL:** `/api/audit/event-impact`
+- **Method:** `GET`
+- **Authentication:** None (Read-Only)
+- **Purpose:** Query multi-horizon event impact evaluation (+1m, +5m, +15m, +30m, +1h, +4h, +24h) and BTC regime correlation.
+- **Current Status:** `VERIFIED`
+
+---
+
+### 4.24 `GET /api/audit/progress`
+- **URL:** `/api/audit/progress`
+- **Method:** `GET`
+- **Authentication:** None (Read-Only)
+- **Purpose:** Query large-scale resumable batch processing pipeline checkpoint and state persistence.
+- **Current Status:** `VERIFIED`
+
+---
+
 ## 5. Test Execution Protocol for AI Auditor
 
 1. **How AI Contractor triggers a test run:**

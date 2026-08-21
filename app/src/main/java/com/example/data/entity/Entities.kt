@@ -1,6 +1,7 @@
 package com.example.data.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(tableName = "users")
@@ -155,7 +156,7 @@ data class MarketAssetEntity(
 @Entity(
     tableName = "historical_candles",
     indices = [
-        androidx.room.Index(value = ["symbol", "timeframe", "openTime"], unique = true)
+        Index(value = ["symbol", "timeframe", "openTime"], unique = true)
     ]
 )
 data class HistoricalCandleEntity(
@@ -180,7 +181,7 @@ data class HistoricalCandleEntity(
 @Entity(
     tableName = "experience_memories",
     indices = [
-        androidx.room.Index(value = ["assetSymbol", "timeframe", "timestamp"])
+        Index(value = ["assetSymbol", "timeframe", "timestamp"])
     ]
 )
 data class ExperienceMemoryEntity(
@@ -235,4 +236,107 @@ data class DataIntegrityAnomalyEntity(
     val isResolved: Boolean = false,
     val detectedAt: Long = System.currentTimeMillis()
 )
+
+@Entity(
+    tableName = "historical_events",
+    indices = [
+        Index(value = ["eventId"], unique = true),
+        Index(value = ["eventTimestamp"])
+    ]
+)
+data class HistoricalEventEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val eventId: String,
+    val eventTimestamp: Long,
+    val source: String,
+    val title: String,
+    val eventType: String, // "EXCHANGE_LISTING", "DELISTING", "HACK_EXPLOIT", "BANKRUPTCY", "PROTOCOL_UPGRADE", "ETF_DECISION", "CPI_RELEASE", "RATE_DECISION", "HALVING", "REGULATORY"
+    val affectedAssetsJson: String,
+    val sourceUrl: String = "",
+    val confidence: Double = 1.0,
+    val marketImpactStatus: String = "PENDING", // "ANALYZED", "DATA_UNAVAILABLE", "PENDING"
+    val details: String = "",
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(
+    tableName = "event_impacts",
+    indices = [
+        Index(value = ["eventId", "assetSymbol", "horizon"], unique = true)
+    ]
+)
+data class EventImpactEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val eventId: String,
+    val assetSymbol: String,
+    val horizon: String, // "1m", "5m", "15m", "30m", "1h", "4h", "24h"
+    val priceBefore: Double,
+    val priceAtEvent: Double,
+    val priceAfter: Double,
+    val pctChange: Double,
+    val volumeChangePct: Double,
+    val volatilityChangePct: Double,
+    val trendChange: String, // "BULLISH_CONTINUATION", "BEARISH_CONTINUATION", "BULLISH_REVERSAL", "BEARISH_REVERSAL", "NEUTRAL"
+    val btcCorrelation: Double,
+    val isBtcDriven: Boolean,
+    val calculatedAt: Long = System.currentTimeMillis(),
+    val status: String = "VALID" // "VALID", "DATA_UNAVAILABLE"
+)
+
+@Entity(
+    tableName = "indicator_snapshots",
+    indices = [
+        Index(value = ["symbol", "timeframe", "timestamp"], unique = true)
+    ]
+)
+data class HistoricalIndicatorSnapshotEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val symbol: String,
+    val timeframe: String,
+    val timestamp: Long,
+    val sma20: Double? = null,
+    val ema20: Double? = null,
+    val wma20: Double? = null,
+    val rsi14: Double? = null,
+    val macdLine: Double? = null,
+    val macdSignal: Double? = null,
+    val macdHist: Double? = null,
+    val bbUpper: Double? = null,
+    val bbMiddle: Double? = null,
+    val bbLower: Double? = null,
+    val atr14: Double? = null,
+    val adx14: Double? = null,
+    val stochK: Double? = null,
+    val stochD: Double? = null,
+    val cci20: Double? = null,
+    val roc12: Double? = null,
+    val vwap: Double? = null,
+    val obv: Double? = null,
+    val volatility: Double? = null,
+    val momentum: Double? = null,
+    val trendStrength: Double? = null,
+    val supportLevel: Double? = null,
+    val resistanceLevel: Double? = null,
+    val calculatedAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "batch_processing_checkpoints")
+data class BatchProcessingCheckpointEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val pipelineName: String,
+    val lastProcessedAssetIndex: Int,
+    val lastProcessedSymbol: String,
+    val lastProcessedTimestamp: Long,
+    val totalAssetsCount: Int,
+    val processedRecordsCount: Long,
+    val batchSize: Int = 50,
+    val status: String = "COMPLETED", // "IN_PROGRESS", "PAUSED", "COMPLETED", "FAILED"
+    val lastCheckpointTime: Long = System.currentTimeMillis(),
+    val errorMessage: String? = null
+)
+
 

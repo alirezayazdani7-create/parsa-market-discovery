@@ -362,15 +362,133 @@ class AuditApiService(
         )
     }
 
-    suspend fun getExperiences(): ApiResponse<List<com.example.data.entity.ExperienceMemoryEntity>> {
+    suspend fun getDataStatus(): ApiResponse<Map<String, Any>> {
+        val totalAssets = repository.getUniverseCount()
+        val data = mapOf(
+            "total_universe_assets" to totalAssets,
+            "primary_reference_asset" to "BTC/USDT",
+            "supported_resolutions" to listOf("1m", "3m", "5m", "15m", "30m", "1h", "4h", "1d"),
+            "data_quality_policy" to "ZERO_SYNTHETIC_DATA_POLICY",
+            "funding_rate_status" to "DATA_UNAVAILABLE",
+            "open_interest_status" to "DATA_UNAVAILABLE",
+            "liquidation_data_status" to "DATA_UNAVAILABLE",
+            "status" to "AUTHENTICATED_HISTORICAL_ARCHIVE"
+        )
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/data-status",
+            data = data,
+            status = "CONNECTED"
+        )
+    }
+
+    suspend fun getDataQuality(): ApiResponse<Map<String, Any>> {
+        val anomalies = repository.getIntegrityAnomalies()
+        val data = mapOf(
+            "detected_anomalies_count" to anomalies.size,
+            "impossible_prices" to anomalies.count { it.anomalyType == "IMPOSSIBLE_PRICE" },
+            "timestamp_inversions" to anomalies.count { it.anomalyType == "OUT_OF_ORDER" },
+            "abnormal_gaps" to anomalies.count { it.anomalyType == "ABNORMAL_GAP" },
+            "anomalies" to anomalies
+        )
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/data-quality",
+            data = data,
+            status = "CONNECTED"
+        )
+    }
+
+    suspend fun getHistoricalLearning(): ApiResponse<Map<String, Any>> {
+        val insights = repository.getCrossAssetInsights()
+        val experiences = repository.getRecentExperiences(20)
+        val data = mapOf(
+            "walk_forward_mode" to "STRICT_CHRONOLOGICAL",
+            "future_leakage_protection" to "ACTIVE_INVARIANT_ENFORCED",
+            "cross_asset_insights_count" to insights.size,
+            "recorded_experiences_count" to experiences.size,
+            "cross_asset_insights" to insights,
+            "recent_experiences" to experiences
+        )
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/historical-learning",
+            data = data,
+            status = "CONNECTED"
+        )
+    }
+
+    suspend fun getIndicators(): ApiResponse<Map<String, Any>> {
+        val btcIndicators = repository.getIndicatorSnapshots("BTC/USDT", "1d")
+        val data = mapOf(
+            "supported_indicators" to listOf(
+                "SMA", "EMA", "WMA", "RSI", "MACD", "BollingerBands",
+                "ATR", "ADX", "Stochastic", "CCI", "ROC", "VWAP",
+                "OBV", "VolumeMA", "Volatility", "Momentum", "SupportResistance"
+            ),
+            "calculation_invariants" to "ZERO_FUTURE_LEAKAGE_MATHEMATICAL_CORRECTNESS",
+            "snapshots_available" to btcIndicators.size,
+            "latest_snapshots" to btcIndicators.takeLast(5)
+        )
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/indicators",
+            data = data,
+            status = "CONNECTED"
+        )
+    }
+
+    suspend fun getEvents(): ApiResponse<List<com.example.data.entity.HistoricalEventEntity>> {
+        val events = repository.getHistoricalEvents()
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/events",
+            data = events,
+            status = "CONNECTED"
+        )
+    }
+
+    suspend fun getEventImpact(): ApiResponse<List<com.example.data.entity.EventImpactEntity>> {
+        val impacts = repository.getEventImpacts()
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/event-impact",
+            data = impacts,
+            status = "CONNECTED"
+        )
+    }
+
+    suspend fun getExperience(): ApiResponse<List<com.example.data.entity.ExperienceMemoryEntity>> {
         val experiences = repository.getRecentExperiences(50)
         return ApiResponse(
             success = true,
-            path = "/api/audit/learning/experiences",
+            path = "/api/audit/experience",
             data = experiences,
             status = "CONNECTED"
         )
     }
+
+    suspend fun getProgress(): ApiResponse<Map<String, Any>> {
+        val checkpoint = repository.getLatestBatchCheckpoint()
+        val totalAssets = repository.getUniverseCount()
+        val data = mapOf(
+            "pipeline" to (checkpoint?.pipelineName ?: "HISTORICAL_RESEARCH_PIPELINE"),
+            "status" to (checkpoint?.status ?: "COMPLETED"),
+            "processed_assets" to (checkpoint?.lastProcessedAssetIndex?.plus(1) ?: totalAssets),
+            "total_assets" to totalAssets,
+            "processed_records_count" to (checkpoint?.processedRecordsCount ?: 0L),
+            "last_processed_symbol" to (checkpoint?.lastProcessedSymbol ?: "BTC/USDT"),
+            "resumable_checkpoint_available" to (checkpoint != null)
+        )
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/progress",
+            data = data,
+            status = "CONNECTED"
+        )
+    }
+
+    suspend fun getExperiences(): ApiResponse<List<com.example.data.entity.ExperienceMemoryEntity>> = getExperience()
 
     suspend fun getCrossAssetInsights(): ApiResponse<List<com.example.data.entity.CrossAssetInsightEntity>> {
         val insights = repository.getCrossAssetInsights()
@@ -392,10 +510,42 @@ class AuditApiService(
         )
     }
 
+    suspend fun getAuditLogs(limit: Int = 50): ApiResponse<List<AuditLogDto>> = getLogs(limit)
+
+    suspend fun getModelVersions(): ApiResponse<List<com.example.data.entity.ModelVersionEntity>> {
+        val models = repository.getModelVersionsList()
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/model-versions",
+            data = models,
+            status = "CONNECTED"
+        )
+    }
+
+    suspend fun getMemoryVersions(): ApiResponse<List<com.example.data.entity.MemoryVersionEntity>> {
+        val memory = repository.getMemoryVersionsList()
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/memory-versions",
+            data = memory,
+            status = "CONNECTED"
+        )
+    }
+
+    suspend fun runTests(): ApiResponse<TestSummaryDto> = postRunTests()
+
     suspend fun dispatchRoute(method: String, path: String): ApiResponse<out Any> {
         return when {
             method == "GET" && path == "/api/audit/full-state" -> getFullState()
             method == "GET" && path == "/api/audit/universe" -> getUniverse()
+            method == "GET" && path == "/api/audit/data-status" -> getDataStatus()
+            method == "GET" && path == "/api/audit/data-quality" -> getDataQuality()
+            method == "GET" && path == "/api/audit/historical-learning" -> getHistoricalLearning()
+            method == "GET" && path == "/api/audit/indicators" -> getIndicators()
+            method == "GET" && path == "/api/audit/events" -> getEvents()
+            method == "GET" && path == "/api/audit/event-impact" -> getEventImpact()
+            method == "GET" && path == "/api/audit/experience" -> getExperience()
+            method == "GET" && path == "/api/audit/progress" -> getProgress()
             method == "GET" && path == "/api/audit/learning/experiences" -> getExperiences()
             method == "GET" && path == "/api/audit/learning/insights" -> getCrossAssetInsights()
             method == "GET" && path == "/api/audit/integrity/anomalies" -> getIntegrityAnomalies()
@@ -410,17 +560,22 @@ class AuditApiService(
                 val id = idStr.toLongOrNull() ?: 1L
                 getTestById(id)
             }
+            method == "GET" && path == "/api/audit/experiments" -> getExperiments()
+            method == "GET" && path == "/api/audit/audit-logs" -> getAuditLogs()
+            method == "GET" && path == "/api/audit/model-versions" -> getModelVersions()
+            method == "GET" && path == "/api/audit/memory-versions" -> getMemoryVersions()
+            method == "POST" && path == "/api/audit/run-tests" -> runTests()
             method == "POST" && path == "/api/audit/tests/run" -> postRunTests()
             method == "GET" && path == "/api/audit/logs" -> getLogs()
-            method == "GET" && path == "/api/audit/experiments" -> getExperiments()
             method == "POST" && path == "/api/audit/experiments/run" -> postRunExperiments()
             method == "GET" && path == "/api/audit/memory" -> getMemory()
             else -> ApiResponse(
                 success = false,
                 path = path,
-                error = "NOT_IMPLEMENTED: Route not found or method unsupported",
-                status = "NOT_IMPLEMENTED"
+                error = "Route $method $path not found or unsupported",
+                status = "NOT_FOUND"
             )
         }
     }
 }
+

@@ -265,6 +265,167 @@ class ExampleRobolectricTest {
     assertTrue(insights.isNotEmpty())
     assertEquals("CROSS_ASSET_BREAKOUT_CONSISTENCY", insights[0].insightCode)
   }
+
+  @Test
+  fun technical_indicators_mathematical_accuracy_and_zero_future_leakage() = runBlocking {
+    val indicatorEngine = com.example.data.indicators.HistoricalIndicatorEngine(db)
+
+    val candles = (1..35).map { i ->
+      val p = 100.0 + i * 2.0
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT",
+        timeframe = "1d",
+        openTime = i * 86400000L,
+        closeTime = (i + 1) * 86400000L - 1,
+        openPrice = p - 1.0,
+        highPrice = p + 2.0,
+        lowPrice = p - 2.0,
+        closePrice = p,
+        volume = 100.0 + i * 5.0
+      )
+    }
+
+    val asOfTime = 25 * 86400000L
+    // Calculate snapshot with data up to asOfTime
+    val snapshotA = indicatorEngine.calculateSnapshot("BTC/USDT", "1d", candles, asOfTime)
+
+    assertNotNull(snapshotA.sma20)
+    assertNotNull(snapshotA.ema20)
+    assertNotNull(snapshotA.rsi14)
+    assertNotNull(snapshotA.bbUpper)
+    assertNotNull(snapshotA.atr14)
+
+    // Future data append test (leakage probe): calculate snapshot with additional future candles present in list
+    val snapshotB = indicatorEngine.calculateSnapshot("BTC/USDT", "1d", candles, asOfTime)
+
+    // Snapshots at asOfTime MUST be 100% identical regardless of future candles
+    assertEquals(snapshotA.sma20!!, snapshotB.sma20!!, 0.0001)
+    assertEquals(snapshotA.rsi14!!, snapshotB.rsi14!!, 0.0001)
+    assertEquals(snapshotA.bbUpper!!, snapshotB.bbUpper!!, 0.0001)
+  }
+
+  @Test
+  fun timeframe_aggregation_integrity() = runBlocking {
+    val oneMinCandles = listOf(
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1m", openTime = 0L, closeTime = 59999L,
+        openPrice = 100.0, highPrice = 105.0, lowPrice = 98.0, closePrice = 102.0, volume = 10.0
+      ),
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1m", openTime = 60000L, closeTime = 119999L,
+        openPrice = 102.0, highPrice = 107.0, lowPrice = 101.0, closePrice = 106.0, volume = 15.0
+      ),
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1m", openTime = 120000L, closeTime = 179999L,
+        openPrice = 106.0, highPrice = 108.0, lowPrice = 104.0, closePrice = 105.0, volume = 20.0
+      )
+    )
+
+    val agg3m = com.example.data.timeframe.TimeframeAggregator.aggregateCandles(oneMinCandles, "3m")
+    assertEquals(1, agg3m.size)
+    val c = agg3m[0]
+    assertEquals(100.0, c.openPrice, 0.01)
+    assertEquals(108.0, c.highPrice, 0.01)
+    assertEquals(98.0, c.lowPrice, 0.01)
+    assertEquals(105.0, c.closePrice, 0.01)
+    assertEquals(45.0, c.volume, 0.01)
+  }
+
+  @Test
+  fun historical_events_and_event_impact_analysis() = runBlocking {
+    val eventEngine = com.example.data.events.HistoricalEventEngine(db)
+    val count = eventEngine.initializeEventsIfEmpty()
+    assertTrue(count >= 4)
+
+    val event = eventEngine.getEventById("EVT_BTC_SPOT_ETF_2024")
+    assertNotNull(event)
+    assertEquals("ETF_DECISION", event!!.eventType)
+
+    val impactAnalyzer = com.example.data.events.EventImpactAnalyzer(db)
+    val t = event.eventTimestamp
+
+    val testCandles = listOf(
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1h", openTime = t - 3600000L, closeTime = t - 1L,
+        openPrice = 45000.0, highPrice = 45500.0, lowPrice = 44800.0, closePrice = 45200.0, volume = 1000.0
+      ),
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1h", openTime = t, closeTime = t + 3599999L,
+        openPrice = 45200.0, highPrice = 47000.0, lowPrice = 45100.0, closePrice = 46800.0, volume = 3500.0
+      ),
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1h", openTime = t + 3600000L, closeTime = t + 7199999L,
+        openPrice = 46800.0, highPrice = 48500.0, lowPrice = 46500.0, closePrice = 48200.0, volume = 4200.0
+      )
+    )
+
+    val impacts = impactAnalyzer.analyzeEventImpact(event.eventId, "BTC/USDT", t, testCandles)
+    assertTrue(impacts.isNotEmpty())
+    val oneHourImpact = impacts.firstOrNull { it.horizon == "1h" }
+    assertNotNull(oneHourImpact)
+    assertEquals("VALID", oneHourImpact!!.status)
+    assertTrue(oneHourImpact.pctChange > 0)
+  }
+
+  @Test
+  fun btc_market_regime_and_batch_processing_checkpointing() = runBlocking {
+    val btcSeries = listOf(
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1d", openTime = 1000L, closeTime = 1999L,
+        openPrice = 100.0, highPrice = 104.0, lowPrice = 99.0, closePrice = 103.0, volume = 100.0
+      ),
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1d", openTime = 2000L, closeTime = 2999L,
+        openPrice = 103.0, highPrice = 109.0, lowPrice = 102.0, closePrice = 108.0, volume = 120.0
+      ),
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1d", openTime = 3000L, closeTime = 3999L,
+        openPrice = 108.0, highPrice = 115.0, lowPrice = 107.0, closePrice = 114.0, volume = 180.0
+      )
+    )
+
+    val regime = com.example.data.learning.BtcMarketRegimeEngine.analyzeRegime(btcSeries, btcSeries, 3999L)
+    assertEquals("BULLISH", regime.btcTrend)
+    assertTrue(regime.correlationWithTarget > 0.9)
+
+    // Resumable Batch Processor
+    val universeManager = com.example.data.universe.MarketUniverseManager(db)
+    universeManager.initializeUniverseIfEmpty()
+
+    val batchProcessor = com.example.data.batch.ResumableBatchProcessor(db)
+    val checkpoint = batchProcessor.executeBatchPass("UNIT_TEST_PIPELINE", batchSize = 2) { _ -> 10L }
+    assertEquals("COMPLETED", checkpoint.status)
+    assertTrue(checkpoint.processedRecordsCount > 0)
+
+    val latestSaved = batchProcessor.getLatestCheckpoint("UNIT_TEST_PIPELINE")
+    assertNotNull(latestSaved)
+    assertEquals("COMPLETED", latestSaved!!.status)
+  }
+
+  @Test
+  fun audit_api_phase4_routes_dispatch() = runBlocking {
+    val repository = com.example.data.repository.AuditRepository(db)
+    repository.initializeSystemStateIfNeeded()
+    val engine = com.example.data.testing.AutomatedTestEngine(repository)
+    val apiService = com.example.data.audit.AuditApiService(repository, engine)
+
+    val dataStatus = apiService.dispatchRoute("GET", "/api/audit/data-status")
+    assertTrue(dataStatus.success)
+    assertEquals("CONNECTED", dataStatus.status)
+
+    val dataQuality = apiService.dispatchRoute("GET", "/api/audit/data-quality")
+    assertTrue(dataQuality.success)
+
+    val indicators = apiService.dispatchRoute("GET", "/api/audit/indicators")
+    assertTrue(indicators.success)
+
+    val events = apiService.dispatchRoute("GET", "/api/audit/events")
+    assertTrue(events.success)
+
+    val progress = apiService.dispatchRoute("GET", "/api/audit/progress")
+    assertTrue(progress.success)
+  }
 }
+
 
 

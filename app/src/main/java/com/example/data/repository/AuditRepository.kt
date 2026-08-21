@@ -11,7 +11,8 @@ import com.example.data.entity.TestRunEntity
 import com.example.data.entity.UserEntity
 import kotlinx.coroutines.flow.Flow
 
-class AuditRepository(private val db: AppDatabase) {
+class AuditRepository(val db: AppDatabase) {
+    val database: AppDatabase get() = db
 
     val allAuditLogs: Flow<List<AuditLogEntity>> = db.auditLogDao().getAllLogs()
     val allTestRuns: Flow<List<TestRunEntity>> = db.testRunDao().getAllTestRuns()
@@ -91,6 +92,10 @@ class AuditRepository(private val db: AppDatabase) {
 
     suspend fun getMemoryVersionsList(): List<MemoryVersionEntity> {
         return db.memoryVersionDao().getMemoryVersionsList()
+    }
+
+    suspend fun getModelVersionsList(): List<ModelVersionEntity> {
+        return db.modelVersionDao().getModelVersionsList()
     }
 
     suspend fun initializeSystemStateIfNeeded() {
@@ -202,6 +207,10 @@ class AuditRepository(private val db: AppDatabase) {
             // Initialize Market Universe Manager with Benchmark Genesis Points
             val universeManager = com.example.data.universe.MarketUniverseManager(db)
             universeManager.initializeUniverseIfEmpty()
+
+            // Initialize Historical Event Engine with Verified Real Market Events
+            val eventEngine = com.example.data.events.HistoricalEventEngine(db)
+            eventEngine.initializeEventsIfEmpty()
         }
     }
 
@@ -234,5 +243,20 @@ class AuditRepository(private val db: AppDatabase) {
 
     suspend fun getIntegrityAnomalies(): List<com.example.data.entity.DataIntegrityAnomalyEntity> =
         db.dataIntegrityAnomalyDao().getAnomaliesList()
+
+    suspend fun getHistoricalEvents(): List<com.example.data.entity.HistoricalEventEntity> =
+        db.historicalEventDao().getEventsList()
+
+    suspend fun getEventImpacts(): List<com.example.data.entity.EventImpactEntity> =
+        db.eventImpactDao().getImpactsList()
+
+    suspend fun getIndicatorSnapshots(symbol: String, timeframe: String): List<com.example.data.entity.HistoricalIndicatorSnapshotEntity> =
+        db.historicalIndicatorDao().getSnapshots(symbol, timeframe)
+
+    suspend fun getBatchCheckpoints(): List<com.example.data.entity.BatchProcessingCheckpointEntity> =
+        db.batchProcessingCheckpointDao().getAllCheckpoints()
+
+    suspend fun getLatestBatchCheckpoint(pipelineName: String = "HISTORICAL_RESEARCH_PIPELINE"): com.example.data.entity.BatchProcessingCheckpointEntity? =
+        db.batchProcessingCheckpointDao().getLatestCheckpoint(pipelineName)
 }
 
