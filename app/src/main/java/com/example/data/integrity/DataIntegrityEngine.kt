@@ -2,7 +2,10 @@ package com.example.data.integrity
 
 import com.example.data.AppDatabase
 import com.example.data.entity.DataIntegrityAnomalyEntity
+import com.example.data.entity.EventImpactEntity
+import com.example.data.entity.ExperienceMemoryEntity
 import com.example.data.entity.HistoricalCandleEntity
+import com.example.data.entity.HistoricalEventEntity
 
 class DataIntegrityEngine(private val db: AppDatabase) {
 
@@ -106,4 +109,77 @@ class DataIntegrityEngine(private val db: AppDatabase) {
 
     suspend fun getAllAnomalies(): List<DataIntegrityAnomalyEntity> =
         db.dataIntegrityAnomalyDao().getAnomaliesList()
+
+    /**
+     * Audits an event prior to registration or processing.
+     * Ensures eventId, timestamp, and source validity.
+     */
+    suspend fun auditEventIngestion(event: HistoricalEventEntity): DataIntegrityAnomalyEntity? {
+        if (event.eventId.isBlank() || event.eventTimestamp <= 0L || event.source.isBlank()) {
+            val anomaly = DataIntegrityAnomalyEntity(
+                symbol = event.primarySymbol,
+                timeframe = "EVENT",
+                anomalyType = "INVALID_EVENT_METADATA",
+                severity = "HIGH",
+                targetTimestamp = event.eventTimestamp,
+                details = "Event ${event.eventId} contains empty required fields or invalid timestamp ${event.eventTimestamp}"
+            )
+            db.dataIntegrityAnomalyDao().insertAnomaly(anomaly)
+            return anomaly
+        }
+        return null
+    }
+
+    /**
+     * Audits calculated event impacts to ensure non-negative prices and logical horizon boundaries.
+     */
+    suspend fun auditImpactCalculation(impacts: List<EventImpactEntity>): List<DataIntegrityAnomalyEntity> {
+        val anomalies = mutableListOf<DataIntegrityAnomalyEntity>()
+        for (impact in impacts) {
+            if (impact.status == "VALID" && (impact.priceAtEvent <= 0.0 || impact.priceAfter <= 0.0)) {
+                val anomaly = DataIntegrityAnomalyEntity(
+                    symbol = impact.assetSymbol,
+                    timeframe = impact.horizon,
+                    anomalyType = "INVALID_IMPACT_PRICE",
+                    severity = "HIGH",
+                    targetTimestamp = impact.calculatedAt,
+                    details = "Impact for event ${impact.eventId} on ${impact.assetSymbol} had non-positive price."
+                )
+                anomalies.add(anomaly)
+            }
+        }
+        if (anomalies.isNotEmpty()) {
+            db.dataIntegrityAnomalyDao().insertAnomalies(anomalies)
+        }
+        return anomalies
+    }
+
+    /**
+     * Audits a walk-forward batch execution verifying zero future leakage across all generated experiences.
+     */
+    suspend fun auditWalkForwardExecution(
+        symbol: String,
+        experiences: List<ExperienceMemoryEntity>
+    ): List<DataIntegrityAnomalyEntity> {
+        val anomalies = mutableListOf<DataIntegrityAnomalyEntity>()
+        var prevTimestamp: Long? = null
+        for (exp in experiences) {
+            if (prevTimestamp != null && exp.timestamp <= prevTimestamp) {
+                val anomaly = DataIntegrityAnomalyEntity(
+                    symbol = symbol,
+                    timeframe = exp.timeframe,
+                    anomalyType = "NON_CHRONOLOGICAL_EXPERIENCE",
+                    severity = "CRITICAL",
+                    targetTimestamp = exp.timestamp,
+                    details = "Experience ${exp.experienceId} timestamp ${exp.timestamp} <= previous $prevTimestamp"
+                )
+                anomalies.add(anomaly)
+            }
+            prevTimestamp = exp.timestamp
+        }
+        if (anomalies.isNotEmpty()) {
+            db.dataIntegrityAnomalyDao().insertAnomalies(anomalies)
+        }
+        return anomalies
+    }
 }

@@ -424,8 +424,240 @@ class ExampleRobolectricTest {
 
     val progress = apiService.dispatchRoute("GET", "/api/audit/progress")
     assertTrue(progress.success)
+
+    val setups = apiService.dispatchRoute("GET", "/api/audit/setups")
+    assertTrue(setups.success)
+  }
+
+  @Test
+  fun stage4_historical_event_integrity_verification() = runBlocking {
+    val eventEngine = com.example.data.events.HistoricalEventEngine(db)
+    val count = eventEngine.initializeEventsIfEmpty()
+    assertTrue(count >= 7)
+
+    val events = eventEngine.getEvents()
+    for (event in events) {
+      assertTrue(event.eventId.isNotBlank())
+      assertTrue(event.eventTimestamp > 0)
+      assertTrue(event.source.isNotBlank())
+      assertTrue(event.sourceUrl.startsWith("http"))
+      assertEquals(1.0, event.confidence, 0.001)
+      assertTrue(event.primarySymbol.isNotBlank())
+      assertTrue(event.affectedAssetsJson.contains("BTC/USDT") || event.affectedAssetsJson.contains("ETH/USDT"))
+    }
+
+    val regulatoryEvents = eventEngine.getEventsByCategory("REGULATORY")
+    assertTrue(regulatoryEvents.isNotEmpty())
+    val etfEvent = regulatoryEvents.first { it.eventId == "EVT_BTC_SPOT_ETF_2024" }
+    assertEquals("ETF_DECISION", etfEvent.eventType)
+    assertEquals("CRITICAL", etfEvent.severity)
+  }
+
+  @Test
+  fun stage4_zero_future_leakage_in_indicators_and_snapshots() = runBlocking {
+    val indicatorEngine = com.example.data.indicators.HistoricalIndicatorEngine(db)
+
+    val historicalCandles = (1..60).map { i ->
+      val p = 100.0 + (i % 10) * 3.0
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT",
+        timeframe = "1h",
+        openTime = i * 3600000L,
+        closeTime = (i + 1) * 3600000L - 1,
+        openPrice = p - 1.0,
+        highPrice = p + 4.0,
+        lowPrice = p - 3.0,
+        closePrice = p,
+        volume = 50.0 + i * 2.0
+      )
+    }
+
+    val asOfTime = 30 * 3600000L
+    // Subset of candles <= asOfTime
+    val pastOnlyCandles = historicalCandles.filter { it.openTime <= asOfTime }
+
+    val snapshotFromPastOnly = indicatorEngine.calculateSnapshot("BTC/USDT", "1h", pastOnlyCandles, asOfTime)
+    val snapshotFromAllCandles = indicatorEngine.calculateSnapshot("BTC/USDT", "1h", historicalCandles, asOfTime)
+
+    // Snapshot calculated with future candles present MUST be bit-identical to snapshot calculated with ONLY past candles
+    assertEquals(snapshotFromPastOnly.sma20!!, snapshotFromAllCandles.sma20!!, 0.00001)
+    assertEquals(snapshotFromPastOnly.ema20!!, snapshotFromAllCandles.ema20!!, 0.00001)
+    assertEquals(snapshotFromPastOnly.rsi14!!, snapshotFromAllCandles.rsi14!!, 0.00001)
+    assertEquals(snapshotFromPastOnly.bbUpper!!, snapshotFromAllCandles.bbUpper!!, 0.00001)
+    assertEquals(snapshotFromPastOnly.atr14!!, snapshotFromAllCandles.atr14!!, 0.00001)
+    assertEquals(snapshotFromPastOnly.vwap!!, snapshotFromAllCandles.vwap!!, 0.00001)
+    assertEquals(snapshotFromPastOnly.obv!!, snapshotFromAllCandles.obv!!, 0.00001)
+  }
+
+  @Test
+  fun stage4_zero_future_leakage_in_event_impact_and_excursion_metrics() = runBlocking {
+    val impactAnalyzer = com.example.data.events.EventImpactAnalyzer(db)
+    val eventTime = 5000000L
+
+    val pastAndEventCandles = listOf(
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1m", openTime = eventTime - 60000L, closeTime = eventTime - 1L,
+        openPrice = 50000.0, highPrice = 50100.0, lowPrice = 49950.0, closePrice = 50050.0, volume = 10.0
+      ),
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1m", openTime = eventTime, closeTime = eventTime + 59999L,
+        openPrice = 50050.0, highPrice = 50500.0, lowPrice = 50000.0, closePrice = 50400.0, volume = 50.0
+      ),
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1m", openTime = eventTime + 60000L, closeTime = eventTime + 119999L,
+        openPrice = 50400.0, highPrice = 51000.0, lowPrice = 50350.0, closePrice = 50900.0, volume = 80.0
+      )
+    )
+
+    val impacts = impactAnalyzer.analyzeEventImpact("EVT_TEST_LEAKAGE", "BTC/USDT", eventTime, pastAndEventCandles)
+    assertTrue(impacts.isNotEmpty())
+
+    val impact1m = impacts.first { it.horizon == "1m" }
+    assertEquals("VALID", impact1m.status)
+    assertEquals("UP", impact1m.direction)
+    assertTrue(impact1m.maxFavorableExcursion > 0)
+    assertTrue(impact1m.impactScore > 0)
+
+    // 24h horizon must be gracefully marked DATA_UNAVAILABLE since no 24h future candles exist
+    val impact24h = impacts.first { it.horizon == "24h" }
+    assertEquals("DATA_UNAVAILABLE", impact24h.status)
+  }
+
+  @Test
+  fun stage4_multi_timeframe_alignment_and_closed_candle_boundary() = runBlocking {
+    val source1m = (0 until 120).map { i ->
+      val t = i * 60000L
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT",
+        timeframe = "1m",
+        openTime = t,
+        closeTime = t + 59999L,
+        openPrice = 100.0 + i * 0.5,
+        highPrice = 101.0 + i * 0.5,
+        lowPrice = 99.5 + i * 0.5,
+        closePrice = 100.5 + i * 0.5,
+        volume = 10.0
+      )
+    }
+
+    // As of 75 minutes (t = 4500000L)
+    val asOfTime = 4500000L
+    val multiTf = com.example.data.timeframe.TimeframeAggregator.alignClosedMultiTimeframe(source1m, asOfTime = asOfTime)
+
+    val candle1h = multiTf["1h"]
+    assertNotNull(candle1h)
+    // The 1h candle MUST close at 3599999L <= 4500000L
+    assertTrue(candle1h!!.closeTime <= asOfTime)
+    assertEquals(0L, candle1h.openTime)
+    assertEquals(3599999L, candle1h.closeTime)
+
+    // The 4h candle is NOT closed at 75 minutes (needs 240 minutes) -> must be null
+    val candle4h = multiTf["4h"]
+    assertTrue(candle4h == null)
+  }
+
+  @Test
+  fun stage4_walk_forward_learning_monotonicity_and_simulation() = runBlocking {
+    val learningEngine = com.example.data.learning.HistoricalLearningEngine(db)
+
+    val candles = (0 until 40).map { i ->
+      val t = i * 86400000L
+      val p = 100.0 + i * 1.5
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT",
+        timeframe = "1d",
+        openTime = t,
+        closeTime = t + 86399999L,
+        openPrice = p - 0.5,
+        highPrice = p + 2.0,
+        lowPrice = p - 1.0,
+        closePrice = p,
+        volume = 100.0 + i * 5.0
+      )
+    }
+
+    val experiences = learningEngine.runWalkForwardSimulation("BTC/USDT", "1d", candles, windowSize = 10, forwardHorizon = 5)
+    assertTrue(experiences.isNotEmpty())
+
+    // Verify strict chronological monotonicity across generated experience memories
+    var previousTime = -1L
+    for (exp in experiences) {
+      assertTrue(exp.timestamp > previousTime)
+      assertTrue(exp.isWalkForwardVerified)
+      assertTrue(exp.prediction.isNotBlank())
+      assertTrue(exp.actualOutcome != null)
+      previousTime = exp.timestamp
+    }
+
+    // Audit query verifications
+    val mistakes = learningEngine.queryMistakes("BTC/USDT")
+    assertNotNull(mistakes)
+    val lessons = learningEngine.queryLessonsLearned()
+    assertTrue(lessons.isNotEmpty())
+  }
+
+  @Test
+  fun stage4_cross_asset_statistical_intelligence() = runBlocking {
+    val learningEngine = com.example.data.learning.HistoricalLearningEngine(db)
+
+    val btcCandles = (1..30).map { i ->
+      val t = i * 86400000L
+      val p = 20000.0 + i * 500.0
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "BTC/USDT", timeframe = "1d", openTime = t, closeTime = t + 86399999L,
+        openPrice = p, highPrice = p + 300.0, lowPrice = p - 200.0, closePrice = p + 200.0, volume = 5000.0
+      )
+    }
+
+    val ethCandles = (1..30).map { i ->
+      val t = i * 86400000L
+      val p = 1500.0 + i * 40.0
+      com.example.data.entity.HistoricalCandleEntity(
+        symbol = "ETH/USDT", timeframe = "1d", openTime = t, closeTime = t + 86399999L,
+        openPrice = p, highPrice = p + 25.0, lowPrice = p - 15.0, closePrice = p + 15.0, volume = 8000.0
+      )
+    }
+
+    val crossInsight = learningEngine.calculateCrossAssetMetrics("BTC/USDT", "ETH/USDT", btcCandles, ethCandles)
+    assertNotNull(crossInsight)
+    assertEquals("CROSS_ASSET_RETURN_CORRELATION", crossInsight!!.patternOrConcept)
+    assertTrue(crossInsight.sampleSize >= 28)
+    assertTrue(crossInsight.statisticalConfidence > 0.8)
+    assertTrue(crossInsight.correlatedAssetsJson.contains("correlation"))
+  }
+
+  @Test
+  fun stage4_data_integrity_audit_and_event_ingestion_validation() = runBlocking {
+    val integrityEngine = com.example.data.integrity.DataIntegrityEngine(db)
+
+    // Valid event
+    val validEvent = com.example.data.entity.HistoricalEventEntity(
+      eventId = "EVT_VALID_001",
+      eventTimestamp = 1600000000000L,
+      source = "REUTERS_FINANCE",
+      title = "Major Verified Market Event",
+      eventType = "REGULATORY",
+      category = "REGULATORY",
+      severity = "HIGH",
+      primarySymbol = "BTC/USDT",
+      affectedAssetsJson = """["BTC/USDT"]""",
+      sourceUrl = "https://reuters.com",
+      confidence = 1.0,
+      marketImpactStatus = "ANALYZED"
+    )
+
+    val validAnomaly = integrityEngine.auditEventIngestion(validEvent)
+    assertTrue(validAnomaly == null)
+
+    // Invalid event (blank ID or 0 timestamp)
+    val invalidEvent = validEvent.copy(eventId = "", eventTimestamp = 0L)
+    val anomaly = integrityEngine.auditEventIngestion(invalidEvent)
+    assertNotNull(anomaly)
+    assertEquals("INVALID_EVENT_METADATA", anomaly!!.anomalyType)
+    assertEquals("HIGH", anomaly.severity)
   }
 }
+
 
 
 

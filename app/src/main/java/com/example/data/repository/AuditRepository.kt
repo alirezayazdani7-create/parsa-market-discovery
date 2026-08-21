@@ -258,5 +258,11 @@ class AuditRepository(val db: AppDatabase) {
 
     suspend fun getLatestBatchCheckpoint(pipelineName: String = "HISTORICAL_RESEARCH_PIPELINE"): com.example.data.entity.BatchProcessingCheckpointEntity? =
         db.batchProcessingCheckpointDao().getLatestCheckpoint(pipelineName)
+
+    suspend fun getHistoricalSetups(limit: Int = 100): List<com.example.data.entity.HistoricalSetupEntity> =
+        db.historicalSetupDao().getSetupsList(limit)
+
+    suspend fun getHistoricalSetupsByEvent(eventId: String): List<com.example.data.entity.HistoricalSetupEntity> =
+        db.historicalSetupDao().getSetupsByEvent(eventId)
 }
 

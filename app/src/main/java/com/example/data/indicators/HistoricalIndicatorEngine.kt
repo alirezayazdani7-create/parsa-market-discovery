@@ -309,5 +309,62 @@ class HistoricalIndicatorEngine(private val db: AppDatabase) {
             val resistance = highs.takeLast(period).maxOrNull()
             return Pair(support, resistance)
         }
+
+        fun calculateVolumeMetrics(volumes: List<Double>, period: Int = 20): Pair<Double?, Double?> {
+            if (volumes.size < period) return Pair(null, null)
+            val volSma = volumes.takeLast(period).average()
+            val rvol = if (volSma > 0) volumes.last() / volSma else 1.0
+            return Pair(volSma, rvol)
+        }
+
+        fun calculateMarketStructure(highs: List<Double>, lows: List<Double>, period: Int = 10): String {
+            if (highs.size < period || lows.size < period) return "INSUFFICIENT_DATA"
+            val mid = period / 2
+            val recentHighs = highs.takeLast(mid)
+            val prevHighs = highs.dropLast(mid).takeLast(mid)
+            val recentLows = lows.takeLast(mid)
+            val prevLows = lows.dropLast(mid).takeLast(mid)
+
+            val higherHigh = (recentHighs.maxOrNull() ?: 0.0) > (prevHighs.maxOrNull() ?: 0.0)
+            val higherLow = (recentLows.minOrNull() ?: 0.0) > (prevLows.minOrNull() ?: 0.0)
+            val lowerHigh = (recentHighs.maxOrNull() ?: 0.0) < (prevHighs.maxOrNull() ?: 0.0)
+            val lowerLow = (recentLows.minOrNull() ?: 0.0) < (prevLows.minOrNull() ?: 0.0)
+
+            return when {
+                higherHigh && higherLow -> "BULLISH_STRUCTURE" // Higher Highs & Higher Lows
+                lowerHigh && lowerLow -> "BEARISH_STRUCTURE" // Lower Highs & Lower Lows
+                higherHigh && lowerLow -> "EXPANDING_STRUCTURE"
+                else -> "RANGE_STRUCTURE"
+            }
+        }
+
+        fun calculateTrendState(closes: List<Double>, sma20: Double?, ema20: Double?, rsi: Double?): String {
+            if (closes.isEmpty() || sma20 == null) return "NEUTRAL"
+            val lastClose = closes.last()
+            return when {
+                lastClose > sma20 && (rsi != null && rsi > 55.0) -> "STRONG_UPTREND"
+                lastClose > sma20 -> "WEAK_UPTREND"
+                lastClose < sma20 && (rsi != null && rsi < 45.0) -> "STRONG_DOWNTREND"
+                lastClose < sma20 -> "WEAK_DOWNTREND"
+                else -> "SIDEWAYS"
+            }
+        }
+
+        fun calculateBreakoutBreakdownState(
+            lastCandle: HistoricalCandleEntity,
+            support: Double?,
+            resistance: Double?,
+            rvol: Double?
+        ): String {
+            if (support == null || resistance == null) return "NONE"
+            val isHighVolume = (rvol ?: 1.0) >= 1.2
+            return when {
+                lastCandle.closePrice > resistance && isHighVolume -> "BULLISH_BREAKOUT"
+                lastCandle.closePrice < support && isHighVolume -> "BEARISH_BREAKDOWN"
+                lastCandle.closePrice > resistance -> "POTENTIAL_BREAKOUT_LOW_VOLUME"
+                lastCandle.closePrice < support -> "POTENTIAL_BREAKDOWN_LOW_VOLUME"
+                else -> "CONSOLIDATION"
+            }
+        }
     }
 }

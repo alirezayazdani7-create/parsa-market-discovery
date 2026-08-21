@@ -532,6 +532,16 @@ class AuditApiService(
         )
     }
 
+    suspend fun getSetups(): ApiResponse<List<com.example.data.entity.HistoricalSetupEntity>> {
+        val setups = repository.getHistoricalSetups(100)
+        return ApiResponse(
+            success = true,
+            path = "/api/audit/setups",
+            data = setups,
+            status = "CONNECTED"
+        )
+    }
+
     suspend fun runTests(): ApiResponse<TestSummaryDto> = postRunTests()
 
     suspend fun dispatchRoute(method: String, path: String): ApiResponse<out Any> {
@@ -544,6 +554,7 @@ class AuditApiService(
             method == "GET" && path == "/api/audit/indicators" -> getIndicators()
             method == "GET" && path == "/api/audit/events" -> getEvents()
             method == "GET" && path == "/api/audit/event-impact" -> getEventImpact()
+            method == "GET" && path == "/api/audit/setups" -> getSetups()
             method == "GET" && path == "/api/audit/experience" -> getExperience()
             method == "GET" && path == "/api/audit/progress" -> getProgress()
             method == "GET" && path == "/api/audit/learning/experiences" -> getExperiences()

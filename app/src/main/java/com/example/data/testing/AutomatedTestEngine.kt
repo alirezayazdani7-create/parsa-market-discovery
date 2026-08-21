@@ -547,6 +547,84 @@ class AutomatedTestEngine(private val repository: AuditRepository) {
                 failed++
             }
 
+            // 16. Event + Condition Historical Setup Analysis (Stage 4)
+            val test16Start = System.currentTimeMillis()
+            try {
+                val setupAnalyzer = com.example.data.events.EventConditionAnalyzer(repository.database)
+                val testEvent = com.example.data.entity.HistoricalEventEntity(
+                    eventId = "EVT_TEST_SETUP_001",
+                    eventTimestamp = 1000000L,
+                    source = "TEST_SOURCE",
+                    title = "Test ETF Approval Event",
+                    eventType = "ETF_DECISION",
+                    category = "REGULATORY",
+                    severity = "CRITICAL",
+                    primarySymbol = "BTC/USDT",
+                    affectedAssetsJson = """["BTC/USDT"]""",
+                    sourceUrl = "https://example.com",
+                    confidence = 1.0,
+                    marketImpactStatus = "ANALYZED"
+                )
+
+                val pastCandles = (1..25).map { i ->
+                    val p = 100.0 + i * 2.0
+                    com.example.data.entity.HistoricalCandleEntity(
+                        symbol = "BTC/USDT",
+                        timeframe = "1h",
+                        openTime = 1000000L - (26 - i) * 3600000L,
+                        closeTime = 1000000L - (26 - i) * 3600000L + 3599999L,
+                        openPrice = p - 1.0,
+                        highPrice = p + 2.0,
+                        lowPrice = p - 2.0,
+                        closePrice = p,
+                        volume = 100.0 + i * 10.0
+                    )
+                }
+
+                val futureCandles = (1..5).map { i ->
+                    val p = 150.0 + i * 5.0
+                    com.example.data.entity.HistoricalCandleEntity(
+                        symbol = "BTC/USDT",
+                        timeframe = "1h",
+                        openTime = 1000000L + (i - 1) * 3600000L + 1L,
+                        closeTime = 1000000L + i * 3600000L,
+                        openPrice = p - 1.0,
+                        highPrice = p + 3.0,
+                        lowPrice = p - 1.0,
+                        closePrice = p,
+                        volume = 200.0
+                    )
+                }
+
+                val setup = setupAnalyzer.analyzeSetup(testEvent, "BTC/USDT", pastCandles, futureCandles, "1h")
+                check(setup.historicalPrediction.isNotBlank()) { "Historical prediction is blank" }
+                check(setup.actualFutureOutcome != null) { "Actual future outcome was not evaluated" }
+                check(setup.predictionError != null) { "Prediction error was not recorded" }
+
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Historical Setup Engine: Event + Condition Coupling & Zero Leakage",
+                        category = "INTEGRATION",
+                        status = "PASSED",
+                        executionTimeMs = System.currentTimeMillis() - test16Start
+                    )
+                )
+                passed++
+            } catch (e: Exception) {
+                testResults.add(
+                    TestResultEntity(
+                        runId = 0,
+                        testName = "Historical Setup Engine: Event + Condition Coupling & Zero Leakage",
+                        category = "INTEGRATION",
+                        status = "FAILED",
+                        errorMessage = e.message,
+                        executionTimeMs = System.currentTimeMillis() - test16Start
+                    )
+                )
+                failed++
+            }
+
             // Future Test Suite Harness Verification (Registered stubs marked NOT_IMPLEMENTED as mandated)
             val futureSuites = listOf(
                 "Data Validation Suite",

@@ -314,4 +314,28 @@ interface BatchProcessingCheckpointDao {
     suspend fun saveCheckpoint(checkpoint: BatchProcessingCheckpointEntity): Long
 }
 
+@Dao
+interface HistoricalSetupDao {
+    @Query("SELECT * FROM historical_setups ORDER BY timestamp DESC")
+    fun getAllSetups(): Flow<List<HistoricalSetupEntity>>
+
+    @Query("SELECT * FROM historical_setups ORDER BY timestamp DESC LIMIT :limit")
+    suspend fun getSetupsList(limit: Int = 100): List<HistoricalSetupEntity>
+
+    @Query("SELECT * FROM historical_setups WHERE eventId = :eventId ORDER BY timestamp ASC")
+    suspend fun getSetupsByEvent(eventId: String): List<HistoricalSetupEntity>
+
+    @Query("SELECT * FROM historical_setups WHERE assetSymbol = :symbol ORDER BY timestamp ASC")
+    suspend fun getSetupsByAsset(symbol: String): List<HistoricalSetupEntity>
+
+    @Query("SELECT * FROM historical_setups WHERE setupId = :setupId LIMIT 1")
+    suspend fun getSetupById(setupId: String): HistoricalSetupEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSetup(setup: HistoricalSetupEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSetups(setups: List<HistoricalSetupEntity>)
+}
+
 

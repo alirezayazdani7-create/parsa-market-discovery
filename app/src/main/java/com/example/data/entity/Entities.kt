@@ -198,11 +198,16 @@ data class ExperienceMemoryEntity(
     val expectedOutcome: String,
     val actualOutcome: String? = null,
     val errorMagnitude: Double? = null,
+    val errorType: String = "NONE", // "NONE", "DIRECTIONAL_MISS", "MAGNITUDE_ERROR", "TIMING_ERROR", "REGIME_SHIFT"
     val lessonLearned: String,
     val confidence: Double = 1.0,
     val isWalkForwardVerified: Boolean = true,
     val memoryVersion: Int = 1,
     val crossAssetCorrelatedCount: Int = 0,
+    val eventState: String = "NONE",
+    val indicatorState: String = "{}",
+    val marketRegime: String = "NEUTRAL",
+    val prediction: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -229,7 +234,7 @@ data class DataIntegrityAnomalyEntity(
     val id: Long = 0,
     val symbol: String,
     val timeframe: String,
-    val anomalyType: String, // "MISSING_DATA", "DUPLICATE_DATA", "TIMESTAMP_ERROR", "OUT_OF_ORDER", "IMPOSSIBLE_PRICE", "ABNORMAL_GAP", "DELISTED_GAP", "INSUFFICIENT_HISTORY"
+    val anomalyType: String, // "MISSING_DATA", "DUPLICATE_DATA", "TIMESTAMP_ERROR", "OUT_OF_ORDER", "IMPOSSIBLE_PRICE", "ABNORMAL_GAP", "DELISTED_GAP", "INSUFFICIENT_HISTORY", "TIMEFRAME_BOUNDARY_MISMATCH", "INVALID_EVENT_TIMESTAMP"
     val severity: String, // "LOW", "MEDIUM", "HIGH", "CRITICAL"
     val targetTimestamp: Long,
     val details: String,
@@ -251,11 +256,16 @@ data class HistoricalEventEntity(
     val eventTimestamp: Long,
     val source: String,
     val title: String,
-    val eventType: String, // "EXCHANGE_LISTING", "DELISTING", "HACK_EXPLOIT", "BANKRUPTCY", "PROTOCOL_UPGRADE", "ETF_DECISION", "CPI_RELEASE", "RATE_DECISION", "HALVING", "REGULATORY"
+    val eventType: String, // "EXCHANGE_LISTING", "DELISTING", "HACK_EXPLOIT", "BANKRUPTCY", "PROTOCOL_UPGRADE", "ETF_DECISION", "CPI_RELEASE", "RATE_DECISION", "HALVING", "REGULATORY", "NETWORK_LAUNCH"
+    val category: String = "MARKET_STRUCTURE", // "MACRO", "REGULATORY", "ON_CHAIN", "PROTOCOL", "EXCHANGE", "CREDIT", "MARKET_STRUCTURE"
+    val severity: String = "HIGH", // "LOW", "MEDIUM", "HIGH", "CRITICAL"
+    val primarySymbol: String = "BTC/USDT",
     val affectedAssetsJson: String,
     val sourceUrl: String = "",
     val confidence: Double = 1.0,
     val marketImpactStatus: String = "PENDING", // "ANALYZED", "DATA_UNAVAILABLE", "PENDING"
+    val preEventState: String = "NEUTRAL",
+    val postEventState: String = "NEUTRAL",
     val details: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
@@ -276,13 +286,50 @@ data class EventImpactEntity(
     val priceAtEvent: Double,
     val priceAfter: Double,
     val pctChange: Double,
+    val maxFavorableExcursion: Double = 0.0,
+    val maxAdverseExcursion: Double = 0.0,
+    val highLowExcursion: Double = 0.0,
     val volumeChangePct: Double,
     val volatilityChangePct: Double,
+    val direction: String = "NEUTRAL", // "UP", "DOWN", "NEUTRAL"
     val trendChange: String, // "BULLISH_CONTINUATION", "BEARISH_CONTINUATION", "BULLISH_REVERSAL", "BEARISH_REVERSAL", "NEUTRAL"
+    val recoveryTimeMs: Long? = null,
+    val maxDrawdown: Double = 0.0,
+    val impactScore: Double = 0.0,
     val btcCorrelation: Double,
     val isBtcDriven: Boolean,
     val calculatedAt: Long = System.currentTimeMillis(),
     val status: String = "VALID" // "VALID", "DATA_UNAVAILABLE"
+)
+
+@Entity(
+    tableName = "historical_setups",
+    indices = [
+        Index(value = ["setupId"], unique = true),
+        Index(value = ["eventId"]),
+        Index(value = ["assetSymbol", "timestamp"])
+    ]
+)
+data class HistoricalSetupEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val setupId: String,
+    val eventId: String,
+    val assetSymbol: String,
+    val timestamp: Long,
+    val marketRegime: String,
+    val trend: String,
+    val indicatorStatesJson: String,
+    val volumeState: String,
+    val volatilityState: String,
+    val marketStructure: String,
+    val eventCharacteristicsJson: String,
+    val historicalPrediction: String,
+    val actualFutureOutcome: String? = null,
+    val predictionError: Double? = null,
+    val confidence: Double = 1.0,
+    val evaluationHorizon: String = "1h",
+    val createdAt: Long = System.currentTimeMillis()
 )
 
 @Entity(

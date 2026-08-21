@@ -1,6 +1,6 @@
 {
   "name": "PARSA",
-  "description": "PARSA Access & Development Environment Setup and Technical Audit System",
+  "description": "PARSA Stage 4 — Historical Intelligence & Event Analysis Engine with Zero Future Leakage, Multi-Timeframe and Walk-Forward Learning",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

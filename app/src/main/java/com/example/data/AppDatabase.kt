@@ -27,10 +27,11 @@ import com.example.data.entity.*
         DataIntegrityAnomalyEntity::class,
         HistoricalEventEntity::class,
         EventImpactEntity::class,
+        HistoricalSetupEntity::class,
         HistoricalIndicatorSnapshotEntity::class,
         BatchProcessingCheckpointEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -52,6 +53,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun dataIntegrityAnomalyDao(): DataIntegrityAnomalyDao
     abstract fun historicalEventDao(): HistoricalEventDao
     abstract fun eventImpactDao(): EventImpactDao
+    abstract fun historicalSetupDao(): HistoricalSetupDao
     abstract fun historicalIndicatorDao(): HistoricalIndicatorDao
     abstract fun batchProcessingCheckpointDao(): BatchProcessingCheckpointDao
 
