@@ -29,9 +29,10 @@ import com.example.data.entity.*
         EventImpactEntity::class,
         HistoricalSetupEntity::class,
         HistoricalIndicatorSnapshotEntity::class,
-        BatchProcessingCheckpointEntity::class
+        BatchProcessingCheckpointEntity::class,
+        DiscoveredPatternEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -56,6 +57,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun historicalSetupDao(): HistoricalSetupDao
     abstract fun historicalIndicatorDao(): HistoricalIndicatorDao
     abstract fun batchProcessingCheckpointDao(): BatchProcessingCheckpointDao
+    abstract fun discoveredPatternDao(): DiscoveredPatternDao
 
     companion object {
         @Volatile

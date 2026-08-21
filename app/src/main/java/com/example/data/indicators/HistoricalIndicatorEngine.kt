@@ -366,5 +366,79 @@ class HistoricalIndicatorEngine(private val db: AppDatabase) {
                 else -> "CONSOLIDATION"
             }
         }
+
+        fun calculateCandleStructure(candle: HistoricalCandleEntity): String {
+            val totalRange = candle.highPrice - candle.lowPrice
+            if (totalRange <= 0.0) return "DOJI"
+
+            val body = abs(candle.closePrice - candle.openPrice)
+            val upperWick = candle.highPrice - max(candle.openPrice, candle.closePrice)
+            val lowerWick = min(candle.openPrice, candle.closePrice) - candle.lowPrice
+
+            val bodyRatio = body / totalRange
+            val upperWickRatio = upperWick / totalRange
+            val lowerWickRatio = lowerWick / totalRange
+
+            return when {
+                bodyRatio < 0.1 -> "DOJI"
+                lowerWickRatio >= 0.6 && upperWickRatio <= 0.15 -> "HAMMER"
+                upperWickRatio >= 0.6 && lowerWickRatio <= 0.15 -> "INVERTED_HAMMER"
+                (upperWickRatio >= 0.55 || lowerWickRatio >= 0.55) -> "PINBAR"
+                candle.closePrice > candle.openPrice && bodyRatio >= 0.6 -> "BULLISH_EXPANSION"
+                candle.closePrice < candle.openPrice && bodyRatio >= 0.6 -> "BEARISH_EXPANSION"
+                candle.closePrice >= candle.openPrice -> "STANDARD_BULLISH"
+                else -> "STANDARD_BEARISH"
+            }
+        }
+
+        fun calculatePriceAcceleration(closes: List<Double>): Double? {
+            if (closes.size < 4) return null
+            val n = closes.size
+            val v2 = closes[n - 1] - closes[n - 2]
+            val v1 = closes[n - 2] - closes[n - 3]
+            return v2 - v1
+        }
+
+        fun calculateVolumeAcceleration(volumes: List<Double>): Double? {
+            if (volumes.size < 4) return null
+            val n = volumes.size
+            val v2 = volumes[n - 1] - volumes[n - 2]
+            val v1 = volumes[n - 2] - volumes[n - 3]
+            return v2 - v1
+        }
+
+        fun calculateVolatilityRegime(atr: Double?, avgAtr: Double?): String {
+            if (atr == null || avgAtr == null || avgAtr <= 0.0) return "NORMAL_VOLATILITY"
+            val ratio = atr / avgAtr
+            return when {
+                ratio >= 2.0 -> "EXTREME_VOLATILITY"
+                ratio >= 1.25 -> "EXPANDING_VOLATILITY"
+                ratio <= 0.75 -> "COMPRESSED_VOLATILITY"
+                else -> "NORMAL_VOLATILITY"
+            }
+        }
+
+        fun calculateTrendRegime(closes: List<Double>, sma20: Double?, ema50: Double?, adx: Double?): String {
+            if (closes.isEmpty() || sma20 == null) return "RANGE_BOUND"
+            val lastClose = closes.last()
+            val strongTrend = (adx ?: 0.0) >= 25.0
+
+            return when {
+                lastClose > sma20 && (ema50 == null || sma20 > ema50) && strongTrend -> "STRONG_BULLISH_REGIME"
+                lastClose > sma20 -> "MILD_BULLISH_REGIME"
+                lastClose < sma20 && (ema50 == null || sma20 < ema50) && strongTrend -> "STRONG_BEARISH_REGIME"
+                lastClose < sma20 -> "MILD_BEARISH_REGIME"
+                else -> "CONSOLIDATION_REGIME"
+            }
+        }
+
+        fun calculateMarketRegime(
+            trendRegime: String,
+            volatilityRegime: String,
+            marketStructure: String
+        ): String {
+            return "${trendRegime}__${volatilityRegime}__${marketStructure}"
+        }
     }
 }
+

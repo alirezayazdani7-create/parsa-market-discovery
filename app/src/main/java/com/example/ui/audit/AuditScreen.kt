@@ -622,12 +622,17 @@ fun ApiExplorerTab(
     val endpoints = listOf(
         Pair("GET", "/api/audit/full-state"),
         Pair("GET", "/api/audit/universe"),
+        Pair("GET", "/api/audit/universe/coverage"),
         Pair("GET", "/api/audit/data-status"),
         Pair("GET", "/api/audit/data-quality"),
         Pair("GET", "/api/audit/historical-learning"),
+        Pair("GET", "/api/audit/patterns"),
+        Pair("GET", "/api/audit/pattern-evidence"),
+        Pair("GET", "/api/audit/learning/failure-patterns"),
         Pair("GET", "/api/audit/indicators"),
         Pair("GET", "/api/audit/events"),
         Pair("GET", "/api/audit/event-impact"),
+        Pair("GET", "/api/audit/setups"),
         Pair("GET", "/api/audit/experience"),
         Pair("GET", "/api/audit/progress"),
         Pair("GET", "/api/audit/learning/experiences"),
@@ -646,6 +651,7 @@ fun ApiExplorerTab(
         Pair("POST", "/api/audit/experiments/run"),
         Pair("GET", "/api/audit/memory")
     )
+
 
     LazyColumn(
         modifier = Modifier

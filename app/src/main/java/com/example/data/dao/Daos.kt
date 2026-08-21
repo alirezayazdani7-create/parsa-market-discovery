@@ -338,4 +338,32 @@ interface HistoricalSetupDao {
     suspend fun insertSetups(setups: List<HistoricalSetupEntity>)
 }
 
+@Dao
+interface DiscoveredPatternDao {
+    @Query("SELECT * FROM discovered_patterns ORDER BY discoveredAt DESC")
+    fun getAllPatterns(): Flow<List<DiscoveredPatternEntity>>
+
+    @Query("SELECT * FROM discovered_patterns ORDER BY confidence DESC, sampleSize DESC")
+    suspend fun getPatternsList(): List<DiscoveredPatternEntity>
+
+    @Query("SELECT * FROM discovered_patterns WHERE evidenceGrade = :grade ORDER BY confidence DESC")
+    suspend fun getPatternsByGrade(grade: String): List<DiscoveredPatternEntity>
+
+    @Query("SELECT * FROM discovered_patterns WHERE patternId = :patternId LIMIT 1")
+    suspend fun getPatternById(patternId: String): DiscoveredPatternEntity?
+
+    @Query("SELECT * FROM discovered_patterns WHERE timeframe = :timeframe ORDER BY confidence DESC")
+    suspend fun getPatternsByTimeframe(timeframe: String): List<DiscoveredPatternEntity>
+
+    @Query("SELECT COUNT(*) FROM discovered_patterns")
+    suspend fun getPatternsCount(): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPattern(pattern: DiscoveredPatternEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPatterns(patterns: List<DiscoveredPatternEntity>)
+}
+
+
 

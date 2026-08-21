@@ -1,6 +1,7 @@
 {
   "name": "PARSA",
-  "description": "PARSA Stage 4 — Historical Intelligence & Event Analysis Engine with Zero Future Leakage, Multi-Timeframe and Walk-Forward Learning",
+  "description": "PARSA Stage 5 — Deep Historical Market Learning, Pattern Discovery & Experience Memory with Anti-Overfitting Evidence Grading",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
+

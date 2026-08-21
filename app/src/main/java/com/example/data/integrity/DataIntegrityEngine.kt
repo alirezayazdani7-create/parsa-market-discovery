@@ -182,4 +182,36 @@ class DataIntegrityEngine(private val db: AppDatabase) {
         }
         return anomalies
     }
+
+    /**
+     * Audits candles to ensure no data exists before an asset's authentic historical genesis or debut.
+     */
+    suspend fun auditAssetExistenceBoundaries(
+        symbol: String,
+        candles: List<HistoricalCandleEntity>
+    ): List<DataIntegrityAnomalyEntity> {
+        val asset = db.marketAssetDao().getAssetBySymbol(symbol) ?: return emptyList()
+        val minValidTime = asset.genesisTimestamp ?: asset.firstSeenAt
+        val anomalies = mutableListOf<DataIntegrityAnomalyEntity>()
+
+        for (candle in candles) {
+            if (candle.openTime < minValidTime) {
+                val anomaly = DataIntegrityAnomalyEntity(
+                    symbol = symbol,
+                    timeframe = candle.timeframe,
+                    anomalyType = "PRE_GENESIS_CONTAMINATION",
+                    severity = "CRITICAL",
+                    targetTimestamp = candle.openTime,
+                    details = "Candle openTime ${candle.openTime} is prior to asset verified genesis $minValidTime"
+                )
+                anomalies.add(anomaly)
+            }
+        }
+
+        if (anomalies.isNotEmpty()) {
+            db.dataIntegrityAnomalyDao().insertAnomalies(anomalies)
+        }
+        return anomalies
+    }
 }
+

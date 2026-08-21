@@ -386,4 +386,39 @@ data class BatchProcessingCheckpointEntity(
     val errorMessage: String? = null
 )
 
+@Entity(
+    tableName = "discovered_patterns",
+    indices = [
+        Index(value = ["patternId"], unique = true),
+        Index(value = ["timeframe"]),
+        Index(value = ["evidenceGrade"])
+    ]
+)
+data class DiscoveredPatternEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val patternId: String,
+    val patternName: String,
+    val conditionsJson: String,
+    val assetSymbolsJson: String,
+    val timeframe: String,
+    val historicalPeriod: String,
+    val sampleSize: Int,
+    val occurrences: Int,
+    val positiveOutcomes: Int,
+    val negativeOutcomes: Int,
+    val neutralOutcomes: Int,
+    val outcomeDistributionJson: String,
+    val volatility: Double,
+    val maxFavorableExcursion: Double = 0.0,
+    val maxAdverseExcursion: Double = 0.0,
+    val drawdown: Double = 0.0,
+    val recoveryTimeMs: Long? = null,
+    val confidence: Double = 1.0,
+    val evidenceGrade: String = "EXPLORATORY", // "INSUFFICIENT_DATA", "EXPLORATORY", "REPEATED", "ROBUST"
+    val sourceDataVersion: String = "HISTORICAL_ARCHIVE_V5",
+    val discoveredAt: Long = System.currentTimeMillis()
+)
+
+
 

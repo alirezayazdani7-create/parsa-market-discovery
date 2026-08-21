@@ -264,5 +264,15 @@ class AuditRepository(val db: AppDatabase) {
 
     suspend fun getHistoricalSetupsByEvent(eventId: String): List<com.example.data.entity.HistoricalSetupEntity> =
         db.historicalSetupDao().getSetupsByEvent(eventId)
+
+    suspend fun getDiscoveredPatterns(): List<com.example.data.entity.DiscoveredPatternEntity> =
+        db.discoveredPatternDao().getPatternsList()
+
+    suspend fun getDiscoveredPatternsByGrade(grade: String): List<com.example.data.entity.DiscoveredPatternEntity> =
+        db.discoveredPatternDao().getPatternsByGrade(grade)
+
+    suspend fun getDiscoveredPatternById(patternId: String): com.example.data.entity.DiscoveredPatternEntity? =
+        db.discoveredPatternDao().getPatternById(patternId)
 }
+
 

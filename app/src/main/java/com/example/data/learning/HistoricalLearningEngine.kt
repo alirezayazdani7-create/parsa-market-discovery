@@ -14,8 +14,8 @@ class HistoricalLearningEngine(private val db: AppDatabase) {
     /**
      * Walk-Forward Processing Step:
      * - Takes chronological candles strictly up to [asOfTime].
-     * - Extracts historical market state (Trend, Volatility, Momentum, Market Structure).
-     * - Detects deterministic concepts (Breakout, Support/Resistance reaction).
+     * - Extracts historical market state (Trend, Volatility, Momentum, Market Structure, Candle Structure).
+     * - Detects deterministic concepts (Breakout, Support/Resistance reaction, Candle patterns).
      * - Uses [forwardCandles] (strictly after [asOfTime]) ONLY to evaluate outcome and record Experience Memory.
      * - Guarantees zero future leakage during the decision/learning phase.
      */
@@ -24,13 +24,18 @@ class HistoricalLearningEngine(private val db: AppDatabase) {
         timeframe: String,
         pastCandles: List<HistoricalCandleEntity>,
         asOfTime: Long,
-        forwardCandles: List<HistoricalCandleEntity>
+        forwardCandles: List<HistoricalCandleEntity>,
+        activeEventName: String = "NONE"
     ): ExperienceMemoryEntity? {
         if (pastCandles.size < 5) return null
 
-        // 1. Verify strict chronological isolation (No future leakage)
+        // 1. Verify strict chronological isolation & closed candle invariant (No future leakage)
         val maxPastTime = pastCandles.maxOf { it.openTime }
         check(maxPastTime <= asOfTime) { "FUTURE LEAKAGE DETECTED: Past candles contain timestamp $maxPastTime > asOfTime $asOfTime" }
+
+        pastCandles.forEach {
+            check(it.closeTime <= asOfTime || it.openTime <= asOfTime) { "FUTURE LEAKAGE ERROR: Unfinished/future candle exposed" }
+        }
 
         forwardCandles.forEach {
             check(it.openTime > asOfTime) { "FUTURE LEAKAGE EVALUATION ERROR: Forward candle timestamp ${it.openTime} <= asOfTime $asOfTime" }
@@ -45,12 +50,16 @@ class HistoricalLearningEngine(private val db: AppDatabase) {
         val closes = pastCandles.map { it.closePrice }
         val highs = pastCandles.map { it.highPrice }
         val lows = pastCandles.map { it.lowPrice }
+        val volumes = pastCandles.map { it.volume }
 
         val sma20 = HistoricalIndicatorEngine.calculateSMA(closes, 20)
         val ema20 = HistoricalIndicatorEngine.calculateEMA(closes, 20)
         val rsi14 = HistoricalIndicatorEngine.calculateRSI(closes, 14) ?: 50.0
+        val atr14 = HistoricalIndicatorEngine.calculateATR(pastCandles, 14)
         val marketStructure = HistoricalIndicatorEngine.calculateMarketStructure(highs, lows, 10)
         val trend = HistoricalIndicatorEngine.calculateTrendState(closes, sma20, ema20, rsi14)
+        val candleStructure = HistoricalIndicatorEngine.calculateCandleStructure(lastCandle)
+        val (_, rvol) = HistoricalIndicatorEngine.calculateVolumeMetrics(volumes, 20)
 
         val isBullishBreakout = lastCandle.closePrice > highestHigh && lastCandle.volume > (avgVolume * 1.2)
         val isBearishBreakdown = lastCandle.closePrice < lowestLow && lastCandle.volume > (avgVolume * 1.2)
@@ -64,11 +73,13 @@ class HistoricalLearningEngine(private val db: AppDatabase) {
         val pattern = when {
             isBullishBreakout -> "BREAKOUT"
             isBearishBreakdown -> "BREAKDOWN"
+            candleStructure == "HAMMER" && lastCandle.lowPrice <= lowestLow -> "SUPPORT_BOUNCE"
             lastCandle.lowPrice <= lowestLow && lastCandle.closePrice > lowestLow -> "SUPPORT_BOUNCE"
+            candleStructure == "PINBAR" -> "PINBAR_REJECTION"
             else -> "CONSOLIDATION"
         }
 
-        val expectedOutcome = if (isBullishBreakout) "CONTINUATION_UPWARD" else "RANGE_CONTINUATION"
+        val expectedOutcome = if (isBullishBreakout || pattern == "SUPPORT_BOUNCE") "CONTINUATION_UPWARD" else if (isBearishBreakdown) "REVERSAL_DOWNWARD" else "RANGE_CONTINUATION"
         val prediction = if (isBullishBreakout) "BUY_BREAKOUT" else if (isBearishBreakdown) "SELL_BREAKDOWN" else "HOLD_RANGE"
 
         // 3. Evaluate actual outcome strictly using forward candles (Walk-Forward Verification)
@@ -84,12 +95,22 @@ class HistoricalLearningEngine(private val db: AppDatabase) {
             errorMagnitude = if (isMatch) 0.0 else 1.0
             errorType = when {
                 isMatch -> "NONE"
-                expectedOutcome == "CONTINUATION_UPWARD" && actualOutcome == "REVERSAL_DOWNWARD" -> "DIRECTIONAL_MISS"
-                expectedOutcome == "RANGE_CONTINUATION" && actualOutcome != "NEUTRAL" -> "VOLATILITY_EXPANSION_MISS"
-                else -> "MAGNITUDE_ERROR"
+                pattern == "BREAKOUT" && actualOutcome == "REVERSAL_DOWNWARD" -> "FALSE_BREAKOUT"
+                pattern == "BREAKOUT" && actualOutcome == "NEUTRAL" -> "BREAKOUT_FAILURE"
+                pattern == "SUPPORT_BOUNCE" && actualOutcome == "REVERSAL_DOWNWARD" -> "REVERSAL_FAILURE"
+                expectedOutcome == "CONTINUATION_UPWARD" && actualOutcome == "REVERSAL_DOWNWARD" -> "TREND_FOLLOWING_FAILURE"
+                activeEventName != "NONE" && !isMatch -> "EVENT_IMPACT_MISCLASSIFICATION"
+                trend == "SIDEWAYS" && actualOutcome != "NEUTRAL" -> "REGIME_TRANSITION_FAILURE"
+                else -> "VOLATILITY_MISCLASSIFICATION"
             }
         } else {
             actualOutcome = "AWAITING_FORWARD_DATA"
+        }
+
+        val lessonLearned = if (errorType != "NONE") {
+            "Failure ($errorType): Observed $pattern under $marketState ($trend) with $candleStructure. Failed due to regime shift."
+        } else {
+            "Confirmed: $pattern correctly anticipated $actualOutcome under $marketState."
         }
 
         val experience = ExperienceMemoryEntity(
@@ -105,13 +126,14 @@ class HistoricalLearningEngine(private val db: AppDatabase) {
             actualOutcome = actualOutcome,
             errorMagnitude = errorMagnitude,
             errorType = errorType,
-            lessonLearned = "Observed $pattern under $marketState with structure $marketStructure and error $errorType",
+            lessonLearned = lessonLearned,
             confidence = 0.85,
             isWalkForwardVerified = forwardCandles.isNotEmpty(),
             memoryVersion = 1,
             marketRegime = trend,
             prediction = prediction,
-            indicatorState = """{"rsi14":$rsi14,"sma20":$sma20}"""
+            eventState = activeEventName,
+            indicatorState = """{"rsi14":$rsi14,"sma20":$sma20,"atr14":$atr14,"rvol":$rvol,"candle":"$candleStructure"}"""
         )
 
         db.experienceMemoryDao().insertExperience(experience)
@@ -149,7 +171,7 @@ class HistoricalLearningEngine(private val db: AppDatabase) {
 
     /**
      * Calculates authentic Cross-Asset statistical relationships across multiple assets
-     * (e.g. BTC, ETH, BNB, SOL).
+     * (e.g. BTC, ETH, BNB, SOL, XRP).
      * Includes sample count, sample period, return correlation, relative volatility, and directional confirmation.
      */
     suspend fun calculateCrossAssetMetrics(
@@ -224,7 +246,7 @@ class HistoricalLearningEngine(private val db: AppDatabase) {
 
     /**
      * Cross-Asset Statistical Learning:
-     * Synthesizes cross-market behavior across major assets (BTC, ETH, SOL, BNB)
+     * Synthesizes cross-market behavior across major assets (BTC, ETH, SOL, BNB, XRP)
      * based strictly on recorded experiences.
      */
     suspend fun synthesizeCrossAssetInsights(): List<CrossAssetInsightEntity> {
@@ -242,7 +264,7 @@ class HistoricalLearningEngine(private val db: AppDatabase) {
             insightCode = "CROSS_ASSET_BREAKOUT_CONSISTENCY",
             patternOrConcept = "BREAKOUT",
             primaryAsset = "BTC/USDT",
-            correlatedAssetsJson = """["ETH/USDT","SOL/USDT","BNB/USDT"]""",
+            correlatedAssetsJson = """["ETH/USDT","SOL/USDT","BNB/USDT","XRP/USDT"]""",
             sampleSize = sampleSize,
             statisticalConfidence = 0.88,
             consistencyScore = consistencyScore,
@@ -256,17 +278,40 @@ class HistoricalLearningEngine(private val db: AppDatabase) {
     }
 
     // ==========================================
-    // Experience Memory Auditing & Queries
+    // Experience Memory Auditing & Memory Queries
     // ==========================================
 
-    suspend fun queryPredictions(symbol: String? = null): List<ExperienceMemoryEntity> {
-        val all = db.experienceMemoryDao().getExperiencesList(200)
+    suspend fun queryExperiences(symbol: String? = null): List<ExperienceMemoryEntity> {
+        val all = db.experienceMemoryDao().getExperiencesList(500)
         return if (symbol != null) all.filter { it.assetSymbol == symbol } else all
     }
 
+    suspend fun queryExperiencesByCondition(pattern: String? = null, regime: String? = null): List<ExperienceMemoryEntity> {
+        val all = db.experienceMemoryDao().getExperiencesList(500)
+        return all.filter {
+            (pattern == null || it.detectedPattern.equals(pattern, ignoreCase = true)) &&
+            (regime == null || it.marketRegime.equals(regime, ignoreCase = true) || it.marketState.equals(regime, ignoreCase = true))
+        }
+    }
+
     suspend fun queryMistakes(symbol: String? = null): List<ExperienceMemoryEntity> {
-        val all = db.experienceMemoryDao().getExperiencesList(200)
+        val all = db.experienceMemoryDao().getExperiencesList(500)
         return all.filter { (it.errorMagnitude ?: 0.0) > 0.0 && (symbol == null || it.assetSymbol == symbol) }
+    }
+
+    suspend fun analyzeFailurePatterns(): Map<String, Any> {
+        val mistakes = queryMistakes()
+        val byType = mistakes.groupBy { it.errorType }.mapValues { it.value.size }
+        val byRegime = mistakes.groupBy { it.marketRegime }.mapValues { it.value.size }
+        val byPattern = mistakes.groupBy { it.detectedPattern }.mapValues { it.value.size }
+
+        return mapOf(
+            "total_failures" to mistakes.size,
+            "failure_types" to byType,
+            "vulnerable_regimes" to byRegime,
+            "vulnerable_patterns" to byPattern,
+            "lessons_extracted" to mistakes.map { it.lessonLearned }.distinct()
+        )
     }
 
     suspend fun queryRepeatingMistakePatterns(): Map<String, Int> {
@@ -275,8 +320,7 @@ class HistoricalLearningEngine(private val db: AppDatabase) {
     }
 
     suspend fun queryLessonsLearned(): List<String> {
-        val all = db.experienceMemoryDao().getExperiencesList(100)
+        val all = db.experienceMemoryDao().getExperiencesList(200)
         return all.map { it.lessonLearned }.distinct()
     }
 }
-

@@ -32,6 +32,23 @@ class HistoricalEventEngine(private val db: AppDatabase) {
                 details = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks"
             ),
             HistoricalEventEntity(
+                eventId = "EVT_BTC_HALVING_2012",
+                eventTimestamp = 1354147200000L, // Nov 28, 2012
+                source = "BITCOIN_NETWORK",
+                title = "Bitcoin 1st Halving (Block 210,000)",
+                eventType = "HALVING",
+                category = "ON_CHAIN",
+                severity = "HIGH",
+                primarySymbol = "BTC/USDT",
+                affectedAssetsJson = """["BTC/USDT"]""",
+                sourceUrl = "https://mempool.space/block/210000",
+                confidence = 1.0,
+                marketImpactStatus = "ANALYZED",
+                preEventState = "ACCUMULATION",
+                postEventState = "BULLISH_TREND",
+                details = "Block reward reduced from 50 BTC to 25 BTC"
+            ),
+            HistoricalEventEntity(
                 eventId = "EVT_MT_GOX_COLLAPSE_2014",
                 eventTimestamp = 1393200000000L, // Feb 24, 2014
                 source = "TOKYO_DISTRICT_COURT",
@@ -66,6 +83,57 @@ class HistoricalEventEngine(private val db: AppDatabase) {
                 details = "Block 0 mined marking first live smart-contract blockchain environment"
             ),
             HistoricalEventEntity(
+                eventId = "EVT_DAO_HACK_FORK_2016",
+                eventTimestamp = 1468972800000L, // Jul 20, 2016
+                source = "ETHEREUM_FOUNDATION",
+                title = "The DAO Hard Fork and Ethereum Classic Split",
+                eventType = "HARD_FORK",
+                category = "PROTOCOL",
+                severity = "HIGH",
+                primarySymbol = "ETH/USDT",
+                affectedAssetsJson = """["ETH/USDT"]""",
+                sourceUrl = "https://blog.ethereum.org/2016/07/20/hard-fork-completed",
+                confidence = 1.0,
+                marketImpactStatus = "ANALYZED",
+                preEventState = "HIGH_VOLATILITY",
+                postEventState = "RANGE_BOUND",
+                details = "Irregular state change recovery resulting in ETH and ETC chain separation"
+            ),
+            HistoricalEventEntity(
+                eventId = "EVT_BTC_HALVING_2016",
+                eventTimestamp = 1468022400000L, // Jul 9, 2016
+                source = "BITCOIN_NETWORK",
+                title = "Bitcoin 2nd Halving (Block 420,000)",
+                eventType = "HALVING",
+                category = "ON_CHAIN",
+                severity = "HIGH",
+                primarySymbol = "BTC/USDT",
+                affectedAssetsJson = """["BTC/USDT"]""",
+                sourceUrl = "https://mempool.space/block/420000",
+                confidence = 1.0,
+                marketImpactStatus = "ANALYZED",
+                preEventState = "ACCUMULATION",
+                postEventState = "BULLISH_TREND",
+                details = "Block reward reduced from 25 BTC to 12.5 BTC"
+            ),
+            HistoricalEventEntity(
+                eventId = "EVT_BTC_SEGWIT_2017",
+                eventTimestamp = 1503446400000L, // Aug 23, 2017
+                source = "BITCOIN_CORE",
+                title = "Bitcoin Segregated Witness (SegWit) Activation (BIP141)",
+                eventType = "PROTOCOL_UPGRADE",
+                category = "PROTOCOL",
+                severity = "HIGH",
+                primarySymbol = "BTC/USDT",
+                affectedAssetsJson = """["BTC/USDT"]""",
+                sourceUrl = "https://github.com/bitcoin/bips/blob/master/bip-0141.mediawiki",
+                confidence = 1.0,
+                marketImpactStatus = "ANALYZED",
+                preEventState = "HIGH_VOLATILITY",
+                postEventState = "BULLISH_TREND",
+                details = "Transaction malleability fix and effective block size capacity increase"
+            ),
+            HistoricalEventEntity(
                 eventId = "EVT_COVID_CRASH_2020",
                 eventTimestamp = 1584057600000L, // Mar 13, 2020
                 source = "GLOBAL_MARKET_DATA",
@@ -74,7 +142,7 @@ class HistoricalEventEngine(private val db: AppDatabase) {
                 category = "MACRO",
                 severity = "CRITICAL",
                 primarySymbol = "BTC/USDT",
-                affectedAssetsJson = """["BTC/USDT","ETH/USDT","BNB/USDT"]""",
+                affectedAssetsJson = """["BTC/USDT","ETH/USDT","BNB/USDT","XRP/USDT"]""",
                 sourceUrl = "https://www.bis.org/publ/qtrpdf/r_qt2006a.htm",
                 confidence = 1.0,
                 marketImpactStatus = "ANALYZED",
@@ -98,6 +166,40 @@ class HistoricalEventEngine(private val db: AppDatabase) {
                 preEventState = "ACCUMULATION",
                 postEventState = "BULLISH_TREND",
                 details = "Block subsidy halved from 12.5 BTC to 6.25 BTC"
+            ),
+            HistoricalEventEntity(
+                eventId = "EVT_EL_SALVADOR_BTC_2021",
+                eventTimestamp = 1631059200000L, // Sep 8, 2021
+                source = "ASAMBLEA_LEGISLATIVA_SV",
+                title = "El Salvador Bitcoin Legal Tender Law Enacted",
+                eventType = "REGULATORY",
+                category = "REGULATORY",
+                severity = "HIGH",
+                primarySymbol = "BTC/USDT",
+                affectedAssetsJson = """["BTC/USDT"]""",
+                sourceUrl = "https://www.asamblea.gob.sv/node/11282",
+                confidence = 1.0,
+                marketImpactStatus = "ANALYZED",
+                preEventState = "BULLISH_TREND",
+                postEventState = "HIGH_VOLATILITY",
+                details = "First sovereign nation recognizing Bitcoin as legal tender"
+            ),
+            HistoricalEventEntity(
+                eventId = "EVT_FED_RATE_HIKE_CYCLE_2022",
+                eventTimestamp = 1647475200000L, // Mar 17, 2022
+                source = "FEDERAL_RESERVE_FOMC",
+                title = "Federal Reserve Begins Quantitative Tightening & 25bps Rate Hike",
+                eventType = "RATE_DECISION",
+                category = "MACRO",
+                severity = "HIGH",
+                primarySymbol = "BTC/USDT",
+                affectedAssetsJson = """["BTC/USDT","ETH/USDT","SOL/USDT"]""",
+                sourceUrl = "https://www.federalreserve.gov/monetarypolicy/fomcpresconditions20220316.htm",
+                confidence = 1.0,
+                marketImpactStatus = "ANALYZED",
+                preEventState = "RANGE_BOUND",
+                postEventState = "BEARISH_TREND",
+                details = "First interest rate increase since 2018 initiating broad risk-off macro regime"
             ),
             HistoricalEventEntity(
                 eventId = "EVT_LUNA_UST_COLLAPSE_2022",
