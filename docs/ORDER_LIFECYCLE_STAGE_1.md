@@ -49,7 +49,9 @@ This stage implements a pure Kotlin state machine and deterministic unit tests o
 - Fill arriving while cancellation is pending.
 - Ambiguous submit outcome does not permit blind resubmission.
 - Reconciliation of unknown status.
-- Reject overfill, zero/negative fill, wrong order ID, empty event ID, and illegal transitions.
+- Reject overfill, zero/negative/non-finite fill, invalid original quantity, wrong order ID, empty event ID, and illegal transitions.
+- Reject decreasing/excessive reconciliation totals and inconsistent REJECTED-with-fills snapshots.
+- A full fill arriving while cancellation is pending ends in FILLED.
 - Preserve partial fills when cancellation is confirmed.
 
 ## Audit record required for this stage
@@ -59,9 +61,9 @@ Record branch, base commit, file paths, commit SHAs, test source, test execution
 ## Continuous integration
 
 The repository now has a dedicated GitHub Actions workflow at
-`.github/workflows/order-lifecycle-stage1.yml`. It runs the Stage 1 unit-test
-class and then builds the debug Android application on pull requests to
-`main`. The workflow is a validation mechanism, not evidence of a passing
+`.github/workflows/order-lifecycle-stage1.yml`. It runs the complete debug unit-test suite on JDK 21 (required by the configured
+Robolectric API 36 tests), uploads the test report even on failure, and then
+builds the debug Android application on pull requests to `main`. The workflow is a validation mechanism, not evidence of a passing
 run. The stage remains blocked until a completed run is inspected and both
 steps succeed.
 
