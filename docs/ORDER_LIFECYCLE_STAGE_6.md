@@ -15,7 +15,7 @@
 - Candidate release, expiry, score/time priority, idempotent replay and one-time claim are implemented transactionally in Room.
 - Startup recovery can restore the authoritative open-order snapshot before the scanner starts.
 - Added `PersistentOpportunityHandoff`: restores open-order occupancy, subscribes to an injected confirmed order-event source, then starts the read-only scanner; callbacks feed the durable queue and the matching fresh-data Hunter.
-- Added an Android lifecycle observer that starts/stops this runtime with its owner. Runtime is dependency-injected and is not silently auto-created or activated by the app.
+- Added `ParsaOpportunityRuntimeOwner` and attached it to `MainActivity`; runtime starts while the Activity is started, stops when it leaves the foreground, and closes its scheduler/databases when the Activity is destroyed.
 - Added close/reopen, waiting-candidate recovery, duplicate/conflict, final-order-release, expiry and one-time-claim tests.
 
 ## Remaining order-source boundary
@@ -28,7 +28,7 @@ The app now has a durable local confirmed-order event source and a state-machine
 - No credentials, private/account endpoints, order placement, cancel requests, wallet or balance access are added.
 - No paper or live trading activation.
 - A Hunter acceptance means eligible for further analysis only.
-- Runtime activation requires explicit construction/injection by the app owner; this change does not auto-start market polling.
+- The Activity explicitly constructs the read-only runtime. It performs public market-data GET requests only while the Activity is started.
 
 ## Acceptance validation
 
@@ -41,7 +41,7 @@ The app now has a durable local confirmed-order event source and a state-machine
 ## Runtime defaults
 
 - Runtime attaches to the Activity lifecycle and starts on Activity start; it stops on Activity stop.
-- Read-only scan universe: first nine entries from the repository's verified core universe.
-- Scan timeframe: 5m; polling interval: 15 seconds; candle history: 30 per symbol.
+- Read-only scan allowlist: BTC/USDT, ETH/USDT, SOL/USDT.
+- Scan timeframe: 5m; polling interval: 30 seconds; candle history: 30 per symbol.
 - Hunter review fetches fresh public data and only marks a candidate eligible for further analysis.
 - Runtime does not place orders, enable paper trading, or access private exchange endpoints.
