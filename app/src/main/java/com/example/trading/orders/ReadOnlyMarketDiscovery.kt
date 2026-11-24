@@ -1,7 +1,6 @@
 package com.example.trading.orders
 
 import com.squareup.moshi.JsonReader
-import okhttp3.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.Buffer
@@ -41,13 +40,10 @@ class BinancePublicMarketDataSource(
         require(symbol.matches(Regex("[A-Z0-9]{2,20}/USDT"))) { "Unsupported symbol format" }
         require(interval in setOf("1m", "5m", "15m", "30m", "1h")) { "Unsupported interval" }
         require(limit in 20..100) { "Candle limit must be between 20 and 100" }
-        val url = baseUrl.toHttpUrl().newBuilder()
-            .addPathSegments("api/v3/klines")
-            .addQueryParameter("symbol", symbol.replace("/", ""))
-            .addQueryParameter("interval", interval)
-            .addQueryParameter("limit", limit.toString())
-            .build()
-        val request = Request.Builder().url(url).get().header("Accept", "application/json").build()
+        val normalizedBaseUrl = baseUrl.trimEnd('/')
+        require(normalizedBaseUrl.startsWith("https://")) { "Market data base URL must use HTTPS" }
+        val url = "$normalizedBaseUrl/api/v3/klines?symbol=${symbol.replace("/", "")}&interval=$interval&limit=$limit"
+        val request = Request.Builder().url(url).get().build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("Market data HTTP ${response.code}")
             val body = response.body?.string() ?: throw IOException("Empty market data response")
