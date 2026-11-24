@@ -104,4 +104,29 @@ class DurableOpportunityQueueTest {
         sourceScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
     }
 
+    @Test fun lifecyclePublisherEmitsOnlyAcceptedOccupancyTransitions() = runBlocking {
+        val sourceScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val source = RoomConfirmedOrderLifecycleEventSource(queue, sourceScope)
+        val publisher = ConfirmedOrderLifecyclePublisher(source)
+        val notices = mutableListOf<ConfirmedOrderLifecycleNotice>()
+        val attached = source.subscribeAndLoadOpenOrders(notices::add)
+        val lifecycle = OrderLifecycle()
+        val initial = OrderState("order-pub", "client-pub", java.math.BigDecimal("2"))
+        val submitted = lifecycle.apply(initial, OrderEvent("evt-submit", "order-pub",
+            OrderEventType.SUBMIT_SENT, 100L))
+        publisher.publishTransition(initial, submitted, "ETH/USDT", 100L)
+        val acknowledged = lifecycle.apply(submitted.state, OrderEvent("evt-ack", "order-pub",
+            OrderEventType.EXCHANGE_ACKNOWLEDGED, 110L))
+        publisher.publishTransition(submitted.state, acknowledged, "ETH/USDT", 110L)
+        val rejected = lifecycle.apply(acknowledged.state, OrderEvent("evt-reject", "order-pub",
+            OrderEventType.EXCHANGE_REJECTED, 120L))
+        publisher.publishTransition(acknowledged.state, rejected, "ETH/USDT", 120L)
+
+        assertEquals(listOf(true, false), notices.map { it.isOpen })
+        assertTrue(queue.openOrderSnapshot().isEmpty())
+        attached.subscription.close()
+        source.close()
+        sourceScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+    }
+
 }
