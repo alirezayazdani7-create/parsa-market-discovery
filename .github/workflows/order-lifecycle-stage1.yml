@@ -1,6 +1,8 @@
 name: PARSA Order Lifecycle Stage 1
 
 on:
+  push:
+    branches: [feature/order-lifecycle-stage-1]
   pull_request:
     branches: [main]
     paths:
