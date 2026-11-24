@@ -34,7 +34,7 @@ The artifact reports paired moving-block bootstrap comparisons with 500 replicat
 
 ## 3. Material diagnostics
 
-- HMM hard assignments are degenerate in all 6 folds for each of the 9 assets (54/54 folds have one state assigned to 100% of observations). HMM should remain a comparator, not a production regime detector, until repaired and independently revalidated.
+- HMM hard assignments collapse to a single state in 52 of 54 folds (at least one state receives 100% of hard assignments). HMM should remain a comparator, not a production regime detector, until repaired and independently revalidated.
 - The MS-AR optimizer reports successful convergence across its restarts in the artifact. This supports numerical fit completion, not forecast calibration or trading profitability.
 - The artifact itself explicitly states that forecast log-score differences are not tradable alpha and that execution costs and net PnL remain untested.
 
@@ -48,7 +48,7 @@ Passed:
 - The artifact's per-asset bootstrap intervals are positive against the three comparators.
 
 Open blockers:
-1. Recompute paired inference with a documented multiple-comparison correction (at minimum Holm across the 27 asset × comparator tests), or define and preregister a smaller primary hypothesis family.
+1. Recompute paired inference with a documented multiple-comparison correction (at minimum Holm across the 27 asset × comparator tests) from raw paired scores or replicate-level outputs. The current artifact is insufficient to calculate adjusted p-values.
 2. Investigate HMM state collapse; do not use its regime labels in downstream decisions.
 3. Validate probability calibration, forecast horizon alignment, and feature/label timing from the underlying implementation.
 4. Run a separate cost-aware strategy evaluation. Forecast score is not net trading PnL.
@@ -75,3 +75,9 @@ The source artifact's configuration records:
 - schema version: 1
 
 The source artifact's final caveat is preserved: positive forecast log-score difference is not evidence of tradable alpha; execution costs and net PnL remain untested.
+
+
+## 7. Reproducible structural audit
+- Added `research/audit_stage1.py` to verify the artifact's 9-asset / 54-fold structure, pooled-score ranking, bootstrap interval counts, and HMM single-state assignments.
+- Local execution against the exact source artifact returned: 9/9 MS-AR pooled-score wins; 27/27 reported intervals above zero; 52/54 HMM folds with a single hard-assigned state; Holm not computable from the stored fields; trading PnL not tested.
+- The script intentionally does not fabricate p-values or claim to recompute bootstrap inference.
