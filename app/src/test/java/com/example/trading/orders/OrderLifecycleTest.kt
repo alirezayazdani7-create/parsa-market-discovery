@@ -138,4 +138,15 @@ class OrderLifecycleTest {
         assertEquals(OrderStatus.CANCELED, s.status)
         assertEquals(0, s.cumulativeFilledQuantity.compareTo(q("2")))
     }
+
+    @Test fun decimalQuantitiesAreExact_andCumulativeDeltaMustMatch() {
+        var s = apply(initial("1"), event("e1", OrderEventType.SUBMIT_SENT))
+        s = apply(s, event("e2", OrderEventType.FILL_RECEIVED, "f1", "0.1"))
+        s = apply(s, event("e3", OrderEventType.FILL_RECEIVED, "f2", "0.2"))
+        assertEquals(0, s.cumulativeFilledQuantity.compareTo(q("0.3")))
+
+        val bad = lifecycle.apply(s, event("e4", OrderEventType.RECONCILIATION_RESULT,
+            status = OrderStatus.PARTIALLY_FILLED, cumulative = "0.4"))
+        assertFalse(bad.accepted)
+    }
 }
