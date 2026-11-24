@@ -8,7 +8,7 @@
 
 ## Objective
 
-Persist immutable order-event records in a local Room/SQLite database so accepted event history survives process/database closure and can be audited or replayed by a later, separately gated component.
+Persist order-event records in a local Room/SQLite database so event history survives database closure and can be inspected by a later, separately gated component.
 
 ## Included
 
@@ -28,14 +28,24 @@ Persist immutable order-event records in a local Room/SQLite database so accepte
 - No API keys, credentials, scheduler, webhook, or background worker.
 - No position, balance, fee, PnL, or risk calculations.
 - No automatic mutation of OrderState; caller integration and replay/recovery are separate gates.
-- No claim of encrypted-at-rest storage or cross-device replication.
+- No claim of encrypted-at-rest storage, cryptographic tamper evidence, or cross-device replication.
 
-## Acceptance gate
+## Acceptance evidence
 
-1. Full `:app:testDebugUnitTest` suite passes.
-2. Dedicated ledger tests pass, including durability after close/reopen, idempotent replay, conflicting replay, exact decimal preservation, per-order event identity, and invalid identifiers.
-3. `:app:assembleDebug` succeeds.
-4. CI run is completed and inspected on the exact commit SHA.
-5. No unreviewed changes are introduced outside this stage's scope.
+1. Full `:app:testDebugUnitTest` suite: **PASS**.
+2. Dedicated ledger test class is included in the successful full test task; its cases cover durability after close/reopen, idempotent replay, conflicting replay, exact decimal preservation, per-order event identity, and invalid identifiers.
+3. `:app:assembleDebug`: **PASS**.
+4. Completed CI run inspected on exact commit `8f754f7791c4fa125a5600022fd13b28c6eba79e`: [Run #45432889770](https://github.com/alirezayazdani7-create/parsa-market-discovery/actions/runs/45432889770).
+5. Scope audit confirms this stage does not introduce exchange execution, credentials, trading activation, or automatic state-machine replay.
 
-The stage remains **BLOCKED_PENDING_EXECUTED_TESTS** until all acceptance evidence is independently verified.
+**Validation status: PASS — implementation and CI acceptance checks verified.**
+
+## Important limitations
+
+- This is a standalone local ledger; it is not yet wired into the app's production order flow or automatic state recovery.
+- The database is not encrypted by this stage.
+- The payload fingerprint is a deterministic identity string, not a cryptographic hash or tamper-proof integrity mechanism.
+- Append-only behavior is enforced by the exposed DAO API; it is not a guarantee against direct database-file modification.
+- No cross-device synchronization or backup guarantee is provided.
+
+Stage 2 validation does not imply paper/live trading readiness or grant execution authority. Those capabilities remain prohibited and require separate explicit gates.
