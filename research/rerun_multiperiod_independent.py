@@ -183,7 +183,10 @@ def main():
             for fi,start in enumerate(FOLD_STARTS):
                 train=r[start:start+10000]; test=r[start+10000:start+12000]
                 ms=fit_msar(train); hm=fit_hmm(train)
-                if not ms.success or not hm.success: print("optimizer warning",sym,fi,ms.success,hm.success,flush=True)
+                if not ms.success or not hm.success:
+                    raise RuntimeError(f"OPTIMIZER_FAIL_CLOSED: {sym} fold={fi} MSAR_success={ms.success} HMM_success={hm.success}; refusing to score or checkpoint this fold")
+                if not np.all(np.isfinite(ms.x)) or not np.all(np.isfinite(hm.x)) or not np.isfinite(ms.fun) or not np.isfinite(hm.fun):
+                    raise RuntimeError(f"OPTIMIZER_INVALID_RESULT: {sym} fold={fi}; non-finite fitted parameters/objective")
                 full=np.r_[train,test]
                 sm=msar_scores(ms.x,full)[-len(test):]
                 sh=hmm_scores(hm.x,full)[-len(test):]
