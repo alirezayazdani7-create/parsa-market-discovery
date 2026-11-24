@@ -86,7 +86,8 @@ class DurableOpportunityQueueTest {
         assertNull(queue.claimNext(OpportunityDirection.LONG, 202L))
         assertEquals(OpportunityStatus.CLAIMED, queue.snapshot().single().status)
     }
-    @Test fun confirmedOrderEventSourceReturnsSnapshotAndDeliversSubsequentEvents() {\n        runBlocking {
+    @Test fun confirmedOrderEventSourceReturnsSnapshotAndDeliversSubsequentEvents() {
+        runBlocking {
         val sourceScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val source = RoomConfirmedOrderLifecycleEventSource(queue, sourceScope)
         val notices = mutableListOf<ConfirmedOrderLifecycleNotice>()
