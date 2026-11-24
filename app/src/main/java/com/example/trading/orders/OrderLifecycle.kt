@@ -35,6 +35,16 @@ data class OrderEvent(
 
 data class OrderTransitionResult(val accepted: Boolean, val duplicate: Boolean, val state: OrderState, val error: String? = null)
 
+/** Stable length-prefixed payload identity shared by lifecycle validation and durable storage. */
+internal fun OrderEvent.canonicalFingerprint(): String {
+    val fields = listOf(
+        orderId, type.name, eventTimeMillis.toString(), fillId.orEmpty(),
+        fillQuantity?.stripTrailingZeros()?.toPlainString().orEmpty(), observedStatus?.name.orEmpty(),
+        observedCumulativeFilledQuantity?.stripTrailingZeros()?.toPlainString().orEmpty(), reason.orEmpty()
+    )
+    return fields.joinToString("") { it.length.toString() + ":" + it }
+}
+
 class OrderLifecycle {
     fun apply(current: OrderState, event: OrderEvent): OrderTransitionResult {
         if (current.orderId.isBlank() || current.clientOrderId.isBlank()) return reject(current, "orderId and clientOrderId must be non-empty")
@@ -142,15 +152,6 @@ class OrderLifecycle {
             lastEventTimeMillis = maxOf(current.lastEventTimeMillis, eventTime)))
     }
 
-    private fun fingerprint(event: OrderEvent): String {
-        val fields = listOf(
-            event.orderId, event.type.name, event.eventTimeMillis.toString(), event.fillId.orEmpty(),
-            event.fillQuantity?.stripTrailingZeros()?.toPlainString().orEmpty(), event.observedStatus?.name.orEmpty(),
-            event.observedCumulativeFilledQuantity?.stripTrailingZeros()?.toPlainString().orEmpty(), event.reason.orEmpty()
-        )
-        // Length-prefix fields so delimiters inside exchange strings cannot collide.
-        return fields.joinToString("") { it.length.toString() + ":" + it }
-    }
-
+    private fun fingerprint(event: OrderEvent): String = event.canonicalFingerprint()
     private fun reject(current: OrderState, reason: String) = OrderTransitionResult(false, false, current, reason)
 }
