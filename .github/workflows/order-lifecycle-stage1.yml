@@ -1,6 +1,8 @@
 name: PARSA Order Lifecycle Stage 1
 
 on:
+  push:
+    branches: [feature/order-lifecycle-stage-1]
   pull_request:
     branches: [main]
     paths:
@@ -11,6 +13,7 @@ on:
       - "gradle/**"
       - "gradle/libs.versions.toml"
       - "docs/ORDER_LIFECYCLE_STAGE_1.md"
+      - "docs/ORDER_LIFECYCLE_STAGE_2.md"
       - ".github/workflows/order-lifecycle-stage1.yml"
   workflow_dispatch:
 

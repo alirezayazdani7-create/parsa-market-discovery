@@ -1,4 +1,5 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import org.gradle.api.tasks.testing.Test
 
 plugins {
   alias(libs.plugins.android.application)
@@ -57,6 +58,12 @@ android {
     buildConfig = true
   }
   testOptions { unitTests { isIncludeAndroidResources = true } }
+
+  // Robolectric downloads the Android SDK runtime artifact at test execution time.
+  // Use the canonical Maven Central endpoint to avoid intermittent repo1 endpoint failures in CI.
+  tasks.withType<Test>().configureEach {
+    systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2")
+  }
   dependenciesInfo {
     includeInApk = false
     includeInBundle = true
