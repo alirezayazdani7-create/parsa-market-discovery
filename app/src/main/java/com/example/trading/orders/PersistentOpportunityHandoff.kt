@@ -16,9 +16,19 @@ data class ConfirmedOrderLifecycleNotice(
     val observedAtMillis: Long
 )
 
+data class OrderEventSubscription(
+    val initialOpenOrders: List<Pair<String, String>>,
+    val subscription: AutoCloseable
+)
+
 interface ConfirmedOrderLifecycleEventSource {
-    suspend fun loadOpenOrders(): List<Pair<String, String>>
-    fun subscribe(listener: (ConfirmedOrderLifecycleNotice) -> Unit): AutoCloseable
+    /**
+     * Must atomically establish the event stream and return the matching open-order snapshot.
+     * Implementations must not leave a snapshot/subscription race window.
+     */
+    suspend fun subscribeAndLoadOpenOrders(
+        listener: (ConfirmedOrderLifecycleNotice) -> Unit
+    ): OrderEventSubscription
 }
 
 /**
@@ -47,11 +57,11 @@ class PersistentOpportunityHandoff(
         startupJob = scope.launch {
             try {
                 lock.withLock {
-                    val open = orderEvents.loadOpenOrders()
-                    queue.restoreOpenOrders(open)
-                    subscription = orderEvents.subscribe { notice ->
+                    val attached = orderEvents.subscribeAndLoadOpenOrders { notice ->
                         scope.launch { handleOrderNotice(notice) }
                     }
+                    queue.restoreOpenOrders(attached.initialOpenOrders)
+                    subscription = attached.subscription
                 }
                 scanner.start { opportunity ->
                     scope.launch { handleOpportunity(opportunity) }
