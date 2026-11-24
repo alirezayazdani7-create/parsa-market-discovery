@@ -18,14 +18,9 @@
 - Added an Android lifecycle observer that starts/stops this runtime with its owner. Runtime is dependency-injected and is not silently auto-created or activated by the app.
 - Added close/reopen, waiting-candidate recovery, duplicate/conflict, final-order-release, expiry and one-time-claim tests.
 
-## Required source integration still outstanding
+## Remaining order-source boundary
 
-The repository does not contain a production order-state event source or an authoritative source of open orders. Stage 6 therefore defines `ConfirmedOrderLifecycleEventSource` as the integration contract and requires its implementation to supply:
-1. An atomic snapshot-and-subscribe operation: the returned open-order snapshot and subsequent event stream must share one consistent boundary, with no lost-event window.
-2. Confirmed open and confirmed close notices only.
-3. Stable order IDs and normalized symbols.
-
-Until a real source is connected, callers must not start the runtime with an empty or guessed snapshot. This stage does not claim production order-event integration is complete.
+The app now has a durable local confirmed-order event source and a state-machine publisher adapter. The publisher must be called by the owner that processes each accepted OrderLifecycle result. This repository still has no exchange order/account adapter and no order submission feature, by design; therefore there are no exchange-originated open-order events to import. The local runtime starts from its durable local occupancy snapshot, and the event publisher is the supported integration point for any future authorized order-state owner.
 
 ## Safety
 
@@ -41,3 +36,12 @@ Until a real source is connected, callers must not start the runtime with an emp
 - `:app:assembleDebug`.
 - Dedicated durable queue tests verify database close/reopen behavior and recovery semantics.
 - CI evidence applies only to the exact validated commit and does not establish strategy profitability or target-device network reliability.
+
+
+## Runtime defaults
+
+- Runtime attaches to the Activity lifecycle and starts on Activity start; it stops on Activity stop.
+- Read-only scan universe: first nine entries from the repository's verified core universe.
+- Scan timeframe: 5m; polling interval: 15 seconds; candle history: 30 per symbol.
+- Hunter review fetches fresh public data and only marks a candidate eligible for further analysis.
+- Runtime does not place orders, enable paper trading, or access private exchange endpoints.
