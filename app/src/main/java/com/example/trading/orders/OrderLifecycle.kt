@@ -101,7 +101,10 @@ class OrderLifecycle {
             if (observedCumulative < current.cumulativeFilledQuantity || observedCumulative > current.originalQuantity)
                 return reject(current, "observed cumulative fill must be monotonic and within original quantity")
             val delta = observedCumulative.subtract(current.cumulativeFilledQuantity)
-            if (delta.compareTo(quantity) != 0) return reject(current, "fill quantity does not match cumulative quantity delta")
+            // Zero means this execution was already included in the exchange snapshot.
+            // A full quantity delta means it is a new execution; other deltas are ambiguous.
+            if (delta.compareTo(BigDecimal.ZERO) != 0 && delta.compareTo(quantity) != 0)
+                return reject(current, "fill quantity does not match cumulative quantity delta")
             observedCumulative
         } else current.cumulativeFilledQuantity.add(quantity)
 
@@ -139,11 +142,15 @@ class OrderLifecycle {
             lastEventTimeMillis = maxOf(current.lastEventTimeMillis, eventTime)))
     }
 
-    private fun fingerprint(event: OrderEvent): String = listOf(
-        event.orderId, event.type.name, event.eventTimeMillis.toString(), event.fillId.orEmpty(),
-        event.fillQuantity?.stripTrailingZeros()?.toPlainString().orEmpty(), event.observedStatus?.name.orEmpty(),
-        event.observedCumulativeFilledQuantity?.stripTrailingZeros()?.toPlainString().orEmpty(), event.reason.orEmpty()
-    ).joinToString("|")
+    private fun fingerprint(event: OrderEvent): String {
+        val fields = listOf(
+            event.orderId, event.type.name, event.eventTimeMillis.toString(), event.fillId.orEmpty(),
+            event.fillQuantity?.stripTrailingZeros()?.toPlainString().orEmpty(), event.observedStatus?.name.orEmpty(),
+            event.observedCumulativeFilledQuantity?.stripTrailingZeros()?.toPlainString().orEmpty(), event.reason.orEmpty()
+        )
+        // Length-prefix fields so delimiters inside exchange strings cannot collide.
+        return fields.joinToString("") { it.length.toString() + ":" + it }
+    }
 
     private fun reject(current: OrderState, reason: String) = OrderTransitionResult(false, false, current, reason)
 }
