@@ -106,7 +106,8 @@ class DurableOpportunityQueueTest {
         }
     }
 
-    @Test fun lifecyclePublisherEmitsOnlyAcceptedOccupancyTransitions() {\n        runBlocking {
+    @Test fun lifecyclePublisherEmitsOnlyAcceptedOccupancyTransitions() {
+        runBlocking {
         val sourceScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val source = RoomConfirmedOrderLifecycleEventSource(queue, sourceScope)
         val publisher = ConfirmedOrderLifecyclePublisher(source)
