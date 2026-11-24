@@ -86,7 +86,7 @@ class DurableOpportunityQueueTest {
         assertNull(queue.claimNext(OpportunityDirection.LONG, 202L))
         assertEquals(OpportunityStatus.CLAIMED, queue.snapshot().single().status)
     }
-    @Test fun confirmedOrderEventSourceReturnsSnapshotAndDeliversSubsequentEvents() = runBlocking {
+    @Test fun confirmedOrderEventSourceReturnsSnapshotAndDeliversSubsequentEvents() {\n        runBlocking {
         val sourceScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val source = RoomConfirmedOrderLifecycleEventSource(queue, sourceScope)
         val notices = mutableListOf<ConfirmedOrderLifecycleNotice>()
@@ -102,9 +102,10 @@ class DurableOpportunityQueueTest {
         attached.subscription.close()
         source.close()
         sourceScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+        }
     }
 
-    @Test fun lifecyclePublisherEmitsOnlyAcceptedOccupancyTransitions() = runBlocking {
+    @Test fun lifecyclePublisherEmitsOnlyAcceptedOccupancyTransitions() {\n        runBlocking {
         val sourceScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val source = RoomConfirmedOrderLifecycleEventSource(queue, sourceScope)
         val publisher = ConfirmedOrderLifecyclePublisher(source)
@@ -127,6 +128,7 @@ class DurableOpportunityQueueTest {
         attached.subscription.close()
         source.close()
         sourceScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+        }
     }
 
 }
