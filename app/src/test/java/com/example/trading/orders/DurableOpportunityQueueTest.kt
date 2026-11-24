@@ -44,7 +44,7 @@ class DurableOpportunityQueueTest {
         database.close()
 
         openDatabase()
-        assertEquals(listOf("order-1" to "BTCUSDT"), queue.openOrderSnapshot())
+        assertEquals(listOf("order-1" to "BTC/USDT"), queue.openOrderSnapshot())
         assertEquals(OpportunityStatus.WAITING_FOR_ORDER_CLOSE, queue.snapshot().single().status)
         assertNull(queue.claimNext(OpportunityDirection.LONG, 300L))
 
