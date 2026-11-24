@@ -54,9 +54,17 @@ This stage implements a pure Kotlin state machine and deterministic unit tests o
 - A full fill arriving while cancellation is pending ends in FILLED.
 - Preserve partial fills when cancellation is confirmed.
 
-## Audit record required for this stage
+## Audit record
 
-Record branch, base commit, file paths, commit SHAs, test source, test execution result, and any unverified items. A test source file existing is not evidence that the test suite passed. Verify the exact commit SHA and inspect the completed CI run, test report, and APK build result. The stage remains **BLOCKED_PENDING_EXECUTED_TESTS** until a real build/test run is executed in the project environment and independently inspected.
+- Branch: `feature/order-lifecycle-stage-1`
+- Base branch: `main`
+- Validated head: `8f754f7791c4fa125a5600022fd13b28c6eba79e`
+- CI run: [GitHub Actions #45432889770](https://github.com/alirezayazdani7-create/parsa-market-discovery/actions/runs/45432889770)
+- Full `:app:testDebugUnitTest`: **PASS**
+- `:app:assembleDebug`: **PASS**
+- CI job conclusion: **SUCCESS**
+- Test report artifact: `order-lifecycle-unit-test-reports` (retained until 2026-12-08)
+- This evidence validates the tested source on the stated commit only. It does not authorize execution or establish trading readiness.
 
 ## Latest validation revision
 
@@ -68,11 +76,4 @@ Record branch, base commit, file paths, commit SHAs, test source, test execution
 
 ## Continuous integration
 
-The repository now has a dedicated GitHub Actions workflow at
-`.github/workflows/order-lifecycle-stage1.yml`. It runs the complete debug unit-test suite on JDK 21 (required by the configured
-Robolectric API 36 tests), uploads the test report even on failure, and then
-builds the debug Android application on pull requests to `main`. The workflow is a validation mechanism, not evidence of a passing
-run. The stage remains blocked until a completed run is inspected and both
-steps succeed.
-
-CI path filter was updated to include this stage document; this commit requests the first automated validation run.
+The workflow at `.github/workflows/order-lifecycle-stage1.yml` runs the complete debug unit-test suite on JDK 21, uploads the test report, and builds the debug Android application. A green run is evidence only for the exact commit and tasks reported above.
