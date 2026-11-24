@@ -21,7 +21,7 @@
 ## Required source integration still outstanding
 
 The repository does not contain a production order-state event source or an authoritative source of open orders. Stage 6 therefore defines `ConfirmedOrderLifecycleEventSource` as the integration contract and requires its implementation to supply:
-1. A complete, authoritative open-order snapshot before scanner start.
+1. An atomic snapshot-and-subscribe operation: the returned open-order snapshot and subsequent event stream must share one consistent boundary, with no lost-event window.
 2. Confirmed open and confirmed close notices only.
 3. Stable order IDs and normalized symbols.
 
