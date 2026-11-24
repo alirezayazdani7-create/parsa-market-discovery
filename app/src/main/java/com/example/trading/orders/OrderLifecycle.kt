@@ -251,8 +251,12 @@ class OrderLifecycle {
             OrderStatus.ACKNOWLEDGED -> filled == 0.0
             OrderStatus.PARTIALLY_FILLED -> filled > 0.0 && filled < current.originalQuantity
             OrderStatus.FILLED -> filled == current.originalQuantity
-            OrderStatus.CANCELED, OrderStatus.REJECTED, OrderStatus.EXPIRED ->
+            OrderStatus.CANCELED, OrderStatus.EXPIRED ->
                 filled < current.originalQuantity
+            // A rejected order cannot already have exchange-confirmed fills.
+            // If the remainder was rejected after partial execution, the exchange
+            // outcome must be represented as CANCELED/EXPIRED plus the fill total.
+            OrderStatus.REJECTED -> filled == 0.0
             else -> false
         }
         if (!consistent) return reject(current, "observed status and cumulative fill quantity are inconsistent")
