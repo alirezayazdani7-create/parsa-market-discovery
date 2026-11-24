@@ -14,6 +14,7 @@ import androidx.room.Transaction
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
 
 @Entity(tableName = "confirmed_open_orders")
 data class ConfirmedOpenOrderEntity(
@@ -87,17 +88,14 @@ class LocalConfirmedOrderLifecycleEventSource(
     private val dao: ConfirmedOrderEventDao
 ) : ConfirmedOrderLifecycleEventSource {
     private val mutex = Mutex()
-    private val listeners = linkedSetOf<(ConfirmedOrderLifecycleNotice) -> Unit>()
+    private val listeners = CopyOnWriteArrayList<(ConfirmedOrderLifecycleNotice) -> Unit>()
 
     override suspend fun subscribeAndLoadOpenOrders(
         listener: (ConfirmedOrderLifecycleNotice) -> Unit
     ): OrderEventSubscription = mutex.withLock {
         val snapshot = dao.readOpenOrders().map { it.orderId to it.symbol }
         listeners += listener
-        OrderEventSubscription(snapshot, AutoCloseable {
-            // Listener removal is serialized by the same mutex.
-            kotlinx.coroutines.runBlocking { mutex.withLock { listeners.remove(listener) } }
-        })
+        OrderEventSubscription(snapshot, AutoCloseable { listeners.remove(listener) })
     }
 
     suspend fun recordConfirmedOpen(orderId: String, symbol: String, observedAtMillis: Long,
