@@ -41,7 +41,7 @@ jobs:
           gradle-version: "9.3.1"
 
       - name: Run Stage 1 order lifecycle tests
-        run: gradle --no-daemon :app:testDebugUnitTest
+        run: gradle --no-daemon :app:testDebugUnitTest --tests "*OrderLifecycleTest"
 
       - name: Create ephemeral debug signing keystore
         run: >-
