@@ -81,3 +81,17 @@ The source artifact's final caveat is preserved: positive forecast log-score dif
 - Added `research/audit_stage1.py` to verify the artifact's 9-asset / 54-fold structure, pooled-score ranking, bootstrap interval counts, and HMM single-state assignments.
 - Local execution against the exact source artifact returned: 9/9 MS-AR pooled-score wins; 27/27 reported intervals above zero; 52/54 HMM folds with a single hard-assigned state; Holm not computable from the stored fields; trading PnL not tested.
 - The script intentionally does not fabricate p-values or claim to recompute bootstrap inference.
+
+
+## 8. Independent raw-data re-run and Holm correction (2026-11-25)
+
+Three recovered Binance Spot 1-minute dataset parts cover the same nine symbols from 2025-01 through 2026-10. Their manifests report 198/198 monthly archives checksum-verified; the re-run validated 963,360 continuous candles per asset (8,670,240 rows total) and reused the six fold index ranges above.
+
+Because the original multi-period experiment source code was not recovered and the source artifact's per-asset input hashes do not match the reconstructed normalized CSV byte streams, this is explicitly an **independent implementation, not a bitwise replay**. The independent specification is documented in `docs/INDEPENDENT_MULTIPERIOD_RERUN.md`; runner: `research/rerun_multiperiod_independent.py`; machine-readable results: `research/independent_rerun_results.json`.
+
+- 108,000 OOS observations; four predictive models; 27 asset × comparator tests.
+- 10,000 non-circular 60-observation moving-block bootstrap replicates within each fold; two-sided centered-bootstrap p-values; Holm correction across all 27 tests.
+- 16/27 comparisons reject at 5% after Holm: MS-AR beats train Gaussian on 9/9 assets; versus HMM, four significant wins and one significant loss (ETH); versus lagged volatility, significant wins on SHIB and PEPE only.
+- This does **not** reproduce the original artifact's MS-AR top ranking on all nine assets. The original implementation and exact input serialization must be recovered to resolve the discrepancy.
+
+**Updated research gate: HOLD.** This independent re-run is distributional forecast scoring only, not trading PnL, not proof of directional alpha, and not authorization for paper/live trading. Fees, spread, slippage, funding, latency, market impact, and execution remain untested.
