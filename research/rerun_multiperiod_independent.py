@@ -104,8 +104,16 @@ def load_returns():
     PART_HASHES=hashes
     cache=ROOT+"/returns_cache.npz"; meta=ROOT+"/returns_cache_manifest.json"
     if os.path.exists(cache) and os.path.exists(meta):
-        if json.load(open(meta,encoding="utf-8")).get("part_sha256")==hashes:
-            z=np.load(cache); return {s:z[s] for s in ASSETS}
+        try:
+            cm=json.load(open(meta,encoding="utf-8"))
+            ch=hashlib.sha256(open(cache,"rb").read()).hexdigest()
+            if cm.get("part_sha256")==hashes and cm.get("cache_sha256")==ch and cm.get("assets")==ASSETS and cm.get("rows_per_asset")==963360:
+                with np.load(cache,allow_pickle=False) as z:
+                    if set(z.files)==set(ASSETS) and all(z[s].shape==(963359,) and z[s].dtype.kind=="f" and np.all(np.isfinite(z[s])) for s in ASSETS):
+                        return {s:z[s].copy() for s in ASSETS}
+            print("CACHE_INVALID: hash/schema/shape/value validation failed; rebuilding",flush=True)
+        except Exception as e:
+            print("CACHE_INVALID: unreadable cache or manifest; rebuilding:",repr(e),flush=True)
     out={}
     for sym in ASSETS:
         ts=[]; closes=[]
@@ -124,8 +132,13 @@ def load_returns():
             raise ValueError(f"{sym}: expected 963360 continuous one-minute candles")
         out[sym]=np.diff(np.log(closes))
         print("loaded",sym,len(closes),"candles",flush=True)
-    np.savez_compressed(cache,**out)
-    json.dump({"part_sha256":hashes,"assets":ASSETS,"rows_per_asset":963360},open(meta,"w"),indent=2)
+    cache_tmp=cache+".tmp.npz"
+    meta_tmp=meta+".tmp"
+    np.savez_compressed(cache_tmp,**out)
+    cache_sha=hashlib.sha256(open(cache_tmp,"rb").read()).hexdigest()
+    with open(meta_tmp,"w",encoding="utf-8") as mf:
+        json.dump({"part_sha256":hashes,"cache_sha256":cache_sha,"assets":ASSETS,"rows_per_asset":963360},mf,indent=2)
+    os.replace(cache_tmp,cache); os.replace(meta_tmp,meta)
     return out
 
 def fit_msar(x):
