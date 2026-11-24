@@ -68,7 +68,7 @@ class ReadOnlyMarketDiscoveryTest {
         val source = FakeSource(candles())
         val scheduler = java.util.concurrent.ScheduledThreadPoolExecutor(1)
         val scanner = ReadOnlyContinuousMarketScanner(
-            source, listOf("BTC/USDT"), pollEveryMillis = 60_000L,
+            source, listOf("BTC/USDT"), pollEveryMillis = 60_000L, initialDelayMillis = 60_000L,
             nowMillis = { 30L * 300_000L + 300_000L }, scheduler = scheduler
         )
         val emitted = mutableListOf<TradeOpportunity>()
