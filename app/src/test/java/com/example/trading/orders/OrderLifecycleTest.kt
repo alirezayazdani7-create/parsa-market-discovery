@@ -146,4 +146,78 @@ class OrderLifecycleTest {
         assertFalse(result.accepted)
         assertEquals(OrderStatus.SUBMITTED, result.state.status)
     }
+
+    @Test
+    fun emptyEventId_isRejectedWithoutMutation() {
+        val result = lifecycle.apply(initial(), event(" ", OrderEventType.SUBMIT_SENT))
+        assertFalse(result.accepted)
+        assertEquals(OrderStatus.NEW, result.state.status)
+    }
+
+    @Test
+    fun invalidOriginalQuantities_areRejectedWithoutMutation() {
+        for (quantity in listOf(0.0, -1.0, Double.NaN, Double.POSITIVE_INFINITY)) {
+            val result = lifecycle.apply(
+                initial(quantity),
+                event("e1", OrderEventType.SUBMIT_SENT)
+            )
+            assertFalse("quantity=$quantity", result.accepted)
+            assertEquals(OrderStatus.NEW, result.state.status)
+        }
+    }
+
+    @Test
+    fun negativeAndNonFiniteFills_areRejectedWithoutMutation() {
+        val submitted = apply(initial(), event("e1", OrderEventType.SUBMIT_SENT))
+        for ((index, quantity) in listOf(-1.0, Double.NaN, Double.POSITIVE_INFINITY).withIndex()) {
+            val result = lifecycle.apply(
+                submitted,
+                event("e${index + 2}", OrderEventType.FILL_RECEIVED, "fill-${index + 1}", quantity)
+            )
+            assertFalse("quantity=$quantity", result.accepted)
+            assertEquals(submitted, result.state)
+        }
+    }
+
+    @Test
+    fun reconciliation_rejectsDecreasingAndExcessiveFillTotals() {
+        var state = apply(initial(), event("e1", OrderEventType.SUBMIT_SENT))
+        state = apply(state, event("e2", OrderEventType.FILL_RECEIVED, "fill-1", 3.0))
+
+        val decreasing = lifecycle.apply(
+            state,
+            event("e3", OrderEventType.RECONCILIATION_RESULT, status = OrderStatus.PARTIALLY_FILLED, cumulative = 2.0)
+        )
+        assertFalse(decreasing.accepted)
+        assertEquals(state, decreasing.state)
+
+        val excessive = lifecycle.apply(
+            state,
+            event("e4", OrderEventType.RECONCILIATION_RESULT, status = OrderStatus.FILLED, cumulative = 11.0)
+        )
+        assertFalse(excessive.accepted)
+        assertEquals(state, excessive.state)
+    }
+
+    @Test
+    fun reconciliation_rejectsRejectedStatusWithExistingFills() {
+        var state = apply(initial(), event("e1", OrderEventType.SUBMIT_SENT))
+        state = apply(state, event("e2", OrderEventType.FILL_RECEIVED, "fill-1", 1.0))
+
+        val result = lifecycle.apply(
+            state,
+            event("e3", OrderEventType.RECONCILIATION_RESULT, status = OrderStatus.REJECTED, cumulative = 1.0)
+        )
+        assertFalse(result.accepted)
+        assertEquals(state, result.state)
+    }
+
+    @Test
+    fun fullFillWhileCancelPending_finishesAsFilled() {
+        var state = apply(initial(), event("e1", OrderEventType.SUBMIT_SENT))
+        state = apply(state, event("e2", OrderEventType.CANCEL_REQUESTED))
+        state = apply(state, event("e3", OrderEventType.FILL_RECEIVED, "fill-1", 10.0))
+        assertEquals(OrderStatus.FILLED, state.status)
+        assertEquals(10.0, state.cumulativeFilledQuantity, 0.0000001)
+    }
 }
