@@ -95,3 +95,16 @@ Because the original multi-period experiment source code was not recovered and t
 - This does **not** reproduce the original artifact's MS-AR top ranking on all nine assets. The original implementation and exact input serialization must be recovered to resolve the discrepancy.
 
 **Updated research gate: HOLD.** This independent re-run is distributional forecast scoring only, not trading PnL, not proof of directional alpha, and not authorization for paper/live trading. Fees, spread, slippage, funding, latency, market impact, and execution remain untested.
+
+
+## 9. Original input-hash provenance diagnostic (2026-11-25)
+
+The original November 15 dataset manifest embedded in `multi-period-walk-forward-43708234327.zip` was compared with the three recovered dataset-part manifests. All **198/198 monthly raw archive SHA-256 values match exactly** (22 per asset). This rules out changed monthly source archive bytes as the explanation for the hash discrepancy.
+
+A direct hash test of the reconstructed float64 return arrays (`SHA256(np.diff(np.log(close)).tobytes())`) matches the original artifact's `input_sha256` for **PEPEUSDT and SHIBUSDT only (2/9)**; the other seven remain mismatched despite all 198 monthly archive checksums matching. The discrepancy is therefore narrowed to per-asset input construction, ordering, column selection, or original hash-generation procedure. It is not yet resolved.
+
+Diagnostic: `docs/PROVENANCE_HASH_DIAGNOSTIC.md`.
+
+**Required to close:** recover the original runner's data-loading and input-hashing code, or exact serialized per-asset input arrays/checkpoints from the original run. Do not overwrite the original hashes or call the independent run an exact replay.
+
+**Gate remains HOLD.** No model adoption, paper trading, or live execution is authorized.
