@@ -22,28 +22,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  order-lifecycle-unit-tests:
+  order-lifecycle-validation:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.3.1"
 
-      - name: Run Stage 1 order lifecycle tests
-        run: gradle --no-daemon :app:testDebugUnitTest
+      - name: Run complete debug unit test suite
+        run: gradle --no-daemon :app:testDebugUnitTest --stacktrace
+
+      - name: Upload unit test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: order-lifecycle-unit-test-reports
+          path: app/build/reports/tests/testDebugUnitTest/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Create ephemeral debug signing keystore
+        if: success()
         run: >-
           keytool -genkeypair -v
           -keystore debug.keystore
@@ -56,4 +66,5 @@ jobs:
           -dname "CN=Android Debug,O=Android,C=US"
 
       - name: Build debug app
-        run: gradle --no-daemon :app:assembleDebug
+        if: success()
+        run: gradle --no-daemon :app:assembleDebug --stacktrace
