@@ -1,7 +1,7 @@
 package com.example.trading.orders
 
 import com.squareup.moshi.JsonReader
-import okhttp3.HttpUrl
+import okhttp3.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.Buffer
@@ -41,7 +41,7 @@ class BinancePublicMarketDataSource(
         require(symbol.matches(Regex("[A-Z0-9]{2,20}/USDT"))) { "Unsupported symbol format" }
         require(interval in setOf("1m", "5m", "15m", "30m", "1h")) { "Unsupported interval" }
         require(limit in 20..100) { "Candle limit must be between 20 and 100" }
-        val url = HttpUrl.get(baseUrl).newBuilder()
+        val url = baseUrl.toHttpUrl().newBuilder()
             .addPathSegments("api/v3/klines")
             .addQueryParameter("symbol", symbol.replace("/", ""))
             .addQueryParameter("interval", interval)
