@@ -64,3 +64,5 @@ class and then builds the debug Android application on pull requests to
 `main`. The workflow is a validation mechanism, not evidence of a passing
 run. The stage remains blocked until a completed run is inspected and both
 steps succeed.
+
+CI path filter was updated to include this stage document; this commit requests the first automated validation run.
