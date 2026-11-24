@@ -25,10 +25,10 @@ Create one authoritative, deterministic definition of an order's lifecycle befor
 
 ## Allowed event semantics
 
-1. Every event must carry a non-empty unique `eventId` and matching `orderId`.
+1. Every event must carry a non-empty `eventId` and matching `orderId`. Reusing an event ID with an identical payload is idempotent; reusing it with a different payload is rejected.
 2. Replayed event IDs are idempotent: they do not change state or quantities.
-3. Fill events also carry a unique `fillId`. A repeated fill ID cannot increase cumulative filled quantity, even if delivered under another event ID.
-4. Fill quantity is incremental, positive, and cannot make cumulative quantity exceed original quantity.
+3. Fill events also carry a unique `fillId`. A repeated fill ID with the same quantity cannot increase cumulative filled quantity, even if delivered under another event ID; reusing a fill ID with a different quantity is rejected.
+4. Quantities use `BigDecimal`, not binary floating-point. Fill quantity is positive and cannot make cumulative quantity exceed original quantity. After snapshot reconciliation, each subsequent fill must include the exchange cumulative quantity, and its delta must equal the fill quantity.
 5. A cancel request is not a cancellation. Only `CANCEL_CONFIRMED` moves the order to `CANCELED`.
 6. A timeout/ambiguous transport result moves `SUBMITTED` to `UNKNOWN`. It does not authorize a second submission.
 7. A late fill received while cancellation is pending is recorded. If it completes the order, the resulting state is `FILLED`; otherwise it remains `PENDING_CANCEL` until cancellation is confirmed.
@@ -56,7 +56,7 @@ This stage implements a pure Kotlin state machine and deterministic unit tests o
 
 ## Audit record required for this stage
 
-Record branch, base commit, file paths, commit SHAs, test source, test execution result, and any unverified items. A test source file existing is not evidence that the test suite passed. The stage remains **BLOCKED_PENDING_EXECUTED_TESTS** until a real build/test run is executed in the project environment and independently inspected.
+Record branch, base commit, file paths, commit SHAs, test source, test execution result, and any unverified items. A test source file existing is not evidence that the test suite passed. Verify the exact commit SHA and inspect the completed CI run, test report, and APK build result. The stage remains **BLOCKED_PENDING_EXECUTED_TESTS** until a real build/test run is executed in the project environment and independently inspected.
 
 ## Continuous integration
 
