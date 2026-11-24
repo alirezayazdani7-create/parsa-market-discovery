@@ -189,8 +189,20 @@ def main():
     t0=time.time(); data=load_returns(); rows=[]; scores={}
     for ai,sym in enumerate(ASSETS):
         cp=ROOT+"/checkpoint_"+sym+".npz"
-        if os.path.exists(cp):
-            z=np.load(cp); folds=[{k:z[f"{i}_{k}"] for k in ("msar","hmm","lagged_volatility","train_gaussian")} for i in range(6)]
+        cmeta=cp+".manifest.json"
+        checkpoint_valid=False
+        if os.path.exists(cp) and os.path.exists(cmeta):
+            try:
+                cm=json.load(open(cmeta,encoding="utf-8"))
+                csha=hashlib.sha256(open(cp,"rb").read()).hexdigest()
+                expected={f"{i}_{k}" for i in range(6) for k in ("msar","hmm","lagged_volatility","train_gaussian")}
+                with np.load(cp,allow_pickle=False) as z:
+                    checkpoint_valid=(cm.get("sha256")==csha and cm.get("symbol")==sym and cm.get("folds")==6 and set(z.files)==expected and all(z[n].shape==(2000,) and z[n].dtype.kind=="f" and np.all(np.isfinite(z[n])) for n in expected))
+                    if checkpoint_valid: folds=[{k:z[f"{i}_{k}"].copy() for k in ("msar","hmm","lagged_volatility","train_gaussian")} for i in range(6)]
+            except Exception as e:
+                print("CHECKPOINT_INVALID:",sym,repr(e),flush=True)
+        if checkpoint_valid:
+            print("checkpoint verified",sym,flush=True)
         else:
             folds=[]; r=data[sym]
             for fi,start in enumerate(FOLD_STARTS):
@@ -211,7 +223,11 @@ def main():
                     sv[k]=-.5*np.log(2*np.pi*vol*vol)-.5*(test[k]/vol)**2
                 folds.append({"msar":sm,"hmm":sh,"lagged_volatility":sv,"train_gaussian":sg})
                 print("fit",sym,"fold",fi,flush=True)
-            np.savez_compressed(cp,**{f"{i}_{k}":v for i,f in enumerate(folds) for k,v in f.items()})
+            cp_tmp=cp+".tmp.npz"; cm_tmp=cmeta+".tmp"
+            np.savez_compressed(cp_tmp,**{f"{i}_{k}":v for i,f in enumerate(folds) for k,v in f.items()})
+            cp_sha=hashlib.sha256(open(cp_tmp,"rb").read()).hexdigest()
+            with open(cm_tmp,"w",encoding="utf-8") as mf: json.dump({"sha256":cp_sha,"symbol":sym,"folds":6,"score_length":2000},mf,indent=2)
+            os.replace(cp_tmp,cp); os.replace(cm_tmp,cmeta)
         scores[sym]=folds
         for comp in ("hmm","lagged_volatility","train_gaussian"):
             d=[f["msar"]-f[comp] for f in folds]
