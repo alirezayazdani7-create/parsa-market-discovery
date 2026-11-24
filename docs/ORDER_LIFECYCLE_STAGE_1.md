@@ -58,6 +58,14 @@ This stage implements a pure Kotlin state machine and deterministic unit tests o
 
 Record branch, base commit, file paths, commit SHAs, test source, test execution result, and any unverified items. A test source file existing is not evidence that the test suite passed. Verify the exact commit SHA and inspect the completed CI run, test report, and APK build result. The stage remains **BLOCKED_PENDING_EXECUTED_TESTS** until a real build/test run is executed in the project environment and independently inspected.
 
+## Latest validation revision
+
+- Order quantities use `BigDecimal`.
+- Event IDs are bound to canonical payload fingerprints; conflicting replays are rejected.
+- Fill IDs are bound to their exact quantities; conflicting reuse is rejected.
+- After reconciliation, late fills require cumulative quantity evidence and are checked against the snapshot to prevent double counting.
+- Regression suite includes exact decimal arithmetic and cumulative-delta validation.
+
 ## Continuous integration
 
 The repository now has a dedicated GitHub Actions workflow at
