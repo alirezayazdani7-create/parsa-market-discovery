@@ -89,9 +89,8 @@ class ContinuousOpportunityHandoffTest {
         scanner.emit(candidate("sol-opp", "SOL/USDT"))
 
         assertEquals(listOf("sol-opp"), hunters.longReviews.map { it.opportunityId })
-        assertEquals(OpportunityStatus.WAITING_FOR_ORDER_CLOSE,
-            coordinator.snapshot().first { it.opportunity.opportunityId == "sol-opp" }.status.let { null }
-                ?: OpportunityStatus.CLAIMED)
+        assertEquals(OpportunityStatus.CLAIMED,
+            coordinator.snapshot().first { it.opportunity.opportunityId == "sol-opp" }.status)
     }
 
     @Test fun expiredCandidateIsNotSentToHunterAfterOrderClose() {
