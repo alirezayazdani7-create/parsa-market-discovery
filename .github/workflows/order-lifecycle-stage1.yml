@@ -15,6 +15,7 @@ on:
       - "docs/ORDER_LIFECYCLE_STAGE_1.md"
       - "docs/ORDER_LIFECYCLE_STAGE_2.md"
       - "docs/ORDER_LIFECYCLE_STAGE_3.md"
+      - "docs/ORDER_LIFECYCLE_STAGE_4.md"
       - ".github/workflows/order-lifecycle-stage1.yml"
   workflow_dispatch:
 
