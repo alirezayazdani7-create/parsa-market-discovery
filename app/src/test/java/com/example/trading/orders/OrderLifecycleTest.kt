@@ -145,8 +145,15 @@ class OrderLifecycleTest {
         s = apply(s, event("e3", OrderEventType.FILL_RECEIVED, "f2", "0.2"))
         assertEquals(0, s.cumulativeFilledQuantity.compareTo(q("0.3")))
 
-        val bad = lifecycle.apply(s, event("e4", OrderEventType.RECONCILIATION_RESULT,
+        // A monotonic exchange snapshot may legitimately reveal an additional fill.
+        s = apply(s, event("e4", OrderEventType.RECONCILIATION_RESULT,
             status = OrderStatus.PARTIALLY_FILLED, cumulative = "0.4"))
-        assertFalse(bad.accepted)
+        assertEquals(0, s.cumulativeFilledQuantity.compareTo(q("0.4")))
+
+        // After reconciliation, event quantity must equal the cumulative delta.
+        val badDelta = lifecycle.apply(s, event("e5", OrderEventType.FILL_RECEIVED,
+            "f3", "0.2", cumulative = "0.5"))
+        assertFalse(badDelta.accepted)
+        assertEquals(0, badDelta.state.cumulativeFilledQuantity.compareTo(q("0.4")))
     }
 }
