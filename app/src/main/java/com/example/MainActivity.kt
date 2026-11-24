@@ -15,10 +15,14 @@ import com.example.ui.theme.ParsaNavyDark
 
 class MainActivity : ComponentActivity() {
   private val auditViewModel: AuditViewModel by viewModels()
+  private var opportunityRuntimeOwner: ParsaOpportunityRuntimeOwner? = null
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
+    opportunityRuntimeOwner = ParsaOpportunityRuntimeOwner(applicationContext).also {
+      lifecycle.addObserver(it.lifecycleObserver)
+    }
     setContent {
       MyApplicationTheme(darkTheme = true) {
         Surface(
@@ -29,6 +33,14 @@ class MainActivity : ComponentActivity() {
         }
       }
     }
+  }
+  override fun onDestroy() {
+    opportunityRuntimeOwner?.let { owner ->
+      lifecycle.removeObserver(owner.lifecycleObserver)
+      owner.close()
+    }
+    opportunityRuntimeOwner = null
+    super.onDestroy()
   }
 }
 
