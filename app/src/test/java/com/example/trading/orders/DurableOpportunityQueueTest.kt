@@ -3,6 +3,9 @@ package com.example.trading.orders
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import android.content.Context
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.*
@@ -83,4 +86,22 @@ class DurableOpportunityQueueTest {
         assertNull(queue.claimNext(OpportunityDirection.LONG, 202L))
         assertEquals(OpportunityStatus.CLAIMED, queue.snapshot().single().status)
     }
+    @Test fun confirmedOrderEventSourceReturnsSnapshotAndDeliversSubsequentEvents() = runBlocking {
+        val sourceScope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val source = RoomConfirmedOrderLifecycleEventSource(queue, sourceScope)
+        val notices = mutableListOf<ConfirmedOrderLifecycleNotice>()
+        val attached = source.subscribeAndLoadOpenOrders(notices::add)
+        assertTrue(attached.initialOpenOrders.isEmpty())
+
+        source.publishConfirmedOpen("local-1", "BTC/USDT", 300L)
+        source.publishConfirmedClose("local-1", "BTC/USDT", 400L)
+
+        assertEquals(listOf(true, false), notices.map { it.isOpen })
+        assertEquals(listOf("local-1"), notices.map { it.orderId }.distinct())
+        assertTrue(queue.openOrderSnapshot().isEmpty())
+        attached.subscription.close()
+        source.close()
+        sourceScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+    }
+
 }
