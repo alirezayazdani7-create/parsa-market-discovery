@@ -55,3 +55,12 @@ This stage implements a pure Kotlin state machine and deterministic unit tests o
 ## Audit record required for this stage
 
 Record branch, base commit, file paths, commit SHAs, test source, test execution result, and any unverified items. A test source file existing is not evidence that the test suite passed. The stage remains **BLOCKED_PENDING_EXECUTED_TESTS** until a real build/test run is executed in the project environment and independently inspected.
+
+## Continuous integration
+
+The repository now has a dedicated GitHub Actions workflow at
+`.github/workflows/order-lifecycle-stage1.yml`. It runs the Stage 1 unit-test
+class and then builds the debug Android application on pull requests to
+`main`. The workflow is a validation mechanism, not evidence of a passing
+run. The stage remains blocked until a completed run is inspected and both
+steps succeed.
