@@ -107,7 +107,6 @@ object ReadOnlyOpportunityAnalyzer {
     fun assess(candles: List<MarketCandle>): DirectionalAssessment {
         if (candles.size < 20) return DirectionalAssessment(null, 0, "INSUFFICIENT_HISTORY")
         val recent = candles.takeLast(5)
-        val prior = candles.dropLast(5).takeLast(15)
         val closes = recent.mapNotNull { it.close.toBigDecimalOrNull() }
         val volumes = candles.takeLast(20).mapNotNull { it.volume.toBigDecimalOrNull() }
         if (closes.size != 5 || volumes.size != 20 || closes.any { it.signum() <= 0 } ||
@@ -136,7 +135,7 @@ object ReadOnlyOpportunityAnalyzer {
     }
 
     private fun List<java.math.BigDecimal>.averageDecimal(): java.math.BigDecimal =
-        fold(java.math.BigDecimal.ZERO, java.math.BigDecimal::add)
+        fold(java.math.BigDecimal.ZERO) { total, value -> total.add(value) }
             .divide(java.math.BigDecimal(size), 8, java.math.RoundingMode.HALF_UP)
 }
 
@@ -149,6 +148,7 @@ class ReadOnlyContinuousMarketScanner(
     private val symbols: List<String>,
     private val interval: String = "5m",
     private val pollEveryMillis: Long = 15_000L,
+    private val initialDelayMillis: Long = 0L,
     private val nowMillis: () -> Long = System::currentTimeMillis,
     private val scheduler: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(),
     private val onStatus: (String) -> Unit = {}
@@ -161,6 +161,7 @@ class ReadOnlyContinuousMarketScanner(
         require(symbols.isNotEmpty())
         require(symbols.distinct().size == symbols.size)
         require(pollEveryMillis >= 1_000L)
+        require(initialDelayMillis >= 0L)
         require(interval in setOf("1m", "5m", "15m", "30m", "1h"))
         symbols.forEach { require(it.matches(Regex("[A-Z0-9]{2,20}/USDT"))) }
     }
@@ -168,7 +169,7 @@ class ReadOnlyContinuousMarketScanner(
     override fun start(onOpportunity: (TradeOpportunity) -> Unit) {
         if (!running.compareAndSet(false, true)) return
         callback = onOpportunity
-        task = scheduler.scheduleWithFixedDelay({ scanOnce() }, 0L, pollEveryMillis, TimeUnit.MILLISECONDS)
+        task = scheduler.scheduleWithFixedDelay({ scanOnce() }, initialDelayMillis, pollEveryMillis, TimeUnit.MILLISECONDS)
     }
 
     fun scanOnce() {
