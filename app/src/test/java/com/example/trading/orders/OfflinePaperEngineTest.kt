@@ -22,7 +22,7 @@ class OfflinePaperEngineTest {
     ) = PaperSignal(id, symbol, side, score, created, expiry, d(entry), d(quantity), leverage)
 
     private fun assertDecimal(expected: String, actual: BigDecimal) =
-        assertEquals(0, d(expected).compareTo(actual))
+        assertEquals("Expected $expected, actual ${actual.toPlainString()}", 0, d(expected).compareTo(actual))
 
     @Test fun longTrade_reconcilesGrossFeesFundingMarginAndNet() {
         val engine = OfflinePaperEngine()
@@ -73,7 +73,7 @@ class OfflinePaperEngineTest {
         assertDecimal("0.504", trade.executionCost)
         assertDecimal("0.03779784", trade.totalFees)
         assertDecimal("18.95820216", trade.netPnl)
-        assertDecimal("20", trade.rawPricePnl.subtract(trade.executionCost))
+        assertDecimal("19.496", trade.rawPricePnl.subtract(trade.executionCost))
         assertDecimal("19.496", trade.grossPnlAfterExecution)
     }
 
