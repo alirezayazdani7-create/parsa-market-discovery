@@ -1,0 +1,58 @@
+name: Offline Paper Engine Accounting Gate
+
+on:
+  push:
+    branches: [offline-paper-engine-gate-20261125]
+    paths:
+      - "app/src/main/java/com/example/trading/orders/OfflinePaperEngine.kt"
+      - "app/src/test/java/com/example/trading/orders/OfflinePaperEngineTest.kt"
+      - ".github/workflows/offline-paper-engine-gate.yml"
+      - "docs/OFFLINE_PAPER_ENGINE_GATE.md"
+      - "app/build.gradle.kts"
+      - "gradle/**"
+      - "gradle/libs.versions.toml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "app/src/main/java/com/example/trading/orders/OfflinePaperEngine.kt"
+      - "app/src/test/java/com/example/trading/orders/OfflinePaperEngineTest.kt"
+      - ".github/workflows/offline-paper-engine-gate.yml"
+      - "docs/OFFLINE_PAPER_ENGINE_GATE.md"
+      - "app/build.gradle.kts"
+      - "gradle/**"
+      - "gradle/libs.versions.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: offline-paper-engine-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  paper-accounting:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout isolated branch
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Run complete Android unit test suite including Paper accounting tests
+        run: gradle --no-daemon :app:testDebugUnitTest --stacktrace
+      - name: Upload deterministic test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-paper-engine-gate-${{ github.run_id }}
+          path: app/build/reports/tests/testDebugUnitTest/
+          if-no-files-found: warn
+          retention-days: 14
