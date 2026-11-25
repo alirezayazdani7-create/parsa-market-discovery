@@ -5,6 +5,9 @@ on:
     branches: [offline-paper-engine-gate-20261125]
     paths:
       - "app/src/main/java/com/example/trading/orders/OfflinePaperEngine.kt"
+      - "app/src/main/java/com/example/trading/orders/ReadOnlyMarketDiscovery.kt"
+      - "app/src/test/java/com/example/trading/orders/OfflinePaperLifecycleIntegrationTest.kt"
+      - "app/src/test/java/com/example/trading/orders/SignalToPaperIntegrationTest.kt"
       - "app/src/test/java/com/example/trading/orders/OfflinePaperEngineTest.kt"
       - ".github/workflows/offline-paper-engine-gate.yml"
       - "docs/OFFLINE_PAPER_ENGINE_GATE.md"
