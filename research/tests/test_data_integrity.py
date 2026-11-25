@@ -50,5 +50,24 @@ class ManifestHashValidationTests(unittest.TestCase):
         with tmp, zf, self.assertRaisesRegex(ValueError, "records/count mismatch"):
             validate_part_manifest(zf, json.loads(zf.read("MANIFEST.json")))
 
+    def test_binance_source_url_maps_to_original_archive_member(self):
+        payload = b"exact source zip bytes"
+        digest = hashlib.sha256(payload).hexdigest()
+        record = {
+            "symbol": "BTCUSDT",
+            "source_url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2025-01.zip",
+            "sha256": digest,
+            "checksum_verified": True,
+            "normalized_csv": "BTCUSDT-1m-2025-01.normalized.csv",
+        }
+        manifest = {"monthly_archives_expected": 1, "monthly_archives_verified": 1, "files": [record]}
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "part.zip"
+            with zipfile.ZipFile(path, "w") as z:
+                z.writestr("BTCUSDT/BTCUSDT-1m-2025-01.zip", payload)
+                z.writestr("MANIFEST.json", json.dumps(manifest))
+            with zipfile.ZipFile(path) as z:
+                validate_part_manifest(z, json.loads(z.read("MANIFEST.json")))
+
 if __name__ == "__main__":
     unittest.main()
