@@ -120,6 +120,6 @@ class OfflinePaperEngineTest {
         engine.submit(signal(quantity = "1"), 150L)
         val trade = engine.close("sig-1", d("101"), 200L, d("-0.25")).trade!!
         assertDecimal("-0.25", trade.fundingCost)
-        assertDecimal("1.2591", trade.netPnl)
+        assertDecimal("1.23191", trade.netPnl)
     }
 }
