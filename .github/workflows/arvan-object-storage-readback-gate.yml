@@ -18,8 +18,8 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.ARVAN_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.ARVAN_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: ir-thr-at1
-      S3_ENDPOINT: https://s3.ir-thr-at1.arvanstorage.ir
-      S3_BUCKET: 2026parsa
+      S3_ENDPOINT: https://s3.ir-central1.arvanstorage.ir
+      S3_BUCKET: 8n8n
     steps:
       - name: Validate credentials are configured without printing values
         shell: bash
