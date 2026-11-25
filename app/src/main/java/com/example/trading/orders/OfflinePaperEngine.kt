@@ -113,7 +113,7 @@ class OfflinePaperEngine(private val config: PaperEngineConfig = PaperEngineConf
         val prior = acceptedSignalFingerprints[signal.signalId]
         if (prior != null) {
             return if (prior == fingerprint) {
-                PaperEntryResult(PaperEntryStatus.DUPLICATE, openPositions[signal.signalId] ?: closedTrades[signal.signalId]?.let { null }, "IDEMPOTENT_SIGNAL")
+                PaperEntryResult(PaperEntryStatus.DUPLICATE, openPositions[signal.signalId], "IDEMPOTENT_SIGNAL")
             } else PaperEntryResult(PaperEntryStatus.CONFLICT, reason = "SIGNAL_ID_PAYLOAD_CONFLICT")
         }
         if (openSymbolToPosition.containsKey(signal.symbol)) return rejected("SYMBOL_ALREADY_OPEN")
@@ -147,7 +147,7 @@ class OfflinePaperEngine(private val config: PaperEngineConfig = PaperEngineConf
     @Synchronized
     fun close(positionId: String, referenceExitPrice: BigDecimal, closedAtMillis: Long,
               fundingCost: BigDecimal = BigDecimal.ZERO): PaperCloseResult {
-        if (referenceExitPrice <= BigDecimal.ZERO || fundingCost == BigDecimal.ZERO.negate().subtract(BigDecimal("1E100"))) {
+        if (referenceExitPrice <= BigDecimal.ZERO) {
             return closeRejected("INVALID_EXIT_OR_FUNDING")
         }
         val fingerprint = listOf(referenceExitPrice.money(), closedAtMillis, fundingCost.money()).joinToString("|")
@@ -158,7 +158,7 @@ class OfflinePaperEngine(private val config: PaperEngineConfig = PaperEngineConf
             } else PaperCloseResult(PaperCloseStatus.CONFLICT, reason = "CLOSE_PAYLOAD_CONFLICT")
         }
         val position = openPositions[positionId] ?: return closeRejected("POSITION_NOT_OPEN")
-        if (closedAtMillis < position.openedAtMillis || fundingCost.scale() > 1000) return closeRejected("INVALID_CLOSE_TIME_OR_COST")
+        if (closedAtMillis < position.openedAtMillis) return closeRejected("INVALID_CLOSE_TIME")
 
         val adverseBps = config.slippageBpsPerFill.add(config.spreadBps.divide(TWO, MC))
         val signedExitBps = if (position.side == PaperSide.LONG) adverseBps.negate() else adverseBps
