@@ -1,0 +1,35 @@
+name: Research data integrity (offline)
+
+on:
+  push:
+    branches: [repair/research-integrity-2026-11-25]
+    paths:
+      - "research/data_integrity.py"
+      - "research/rerun_multiperiod_independent.py"
+      - "research/tests/test_data_integrity.py"
+      - ".github/workflows/research-data-integrity.yml"
+  pull_request:
+    branches: [repair/research-integrity-2026-11-25]
+    paths:
+      - "research/data_integrity.py"
+      - "research/rerun_multiperiod_independent.py"
+      - "research/tests/test_data_integrity.py"
+      - ".github/workflows/research-data-integrity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  byte-hash-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run focused integrity tests (offline; no credentials)
+        run: python -m unittest discover -s research/tests -v
+      - name: Compile research runner and validator
+        run: python -m py_compile research/data_integrity.py research/rerun_multiperiod_independent.py

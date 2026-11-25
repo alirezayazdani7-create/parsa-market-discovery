@@ -9,6 +9,7 @@ import argparse, hashlib, json, math, os, time, zipfile
 import numpy as np
 from numba import njit
 from scipy.optimize import minimize
+from data_integrity import validate_part_manifest
 
 ROOT="."
 PARTS=[]
@@ -99,8 +100,7 @@ def load_returns():
         hashes.append(h.hexdigest())
         with zipfile.ZipFile(p) as z:
             m=json.loads(z.read("MANIFEST.json"))
-            if m.get("monthly_archives_expected")!=m.get("monthly_archives_verified") or not all(x.get("checksum_verified") for x in m.get("files",[])):
-                raise ValueError("DATA_INTEGRITY: part manifest does not verify "+p)
+            validate_part_manifest(z, m, p)
     PART_HASHES=hashes
     cache=ROOT+"/returns_cache.npz"; meta=ROOT+"/returns_cache_manifest.json"
     if os.path.exists(cache) and os.path.exists(meta):
