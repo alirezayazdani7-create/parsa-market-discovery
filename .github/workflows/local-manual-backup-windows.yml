@@ -1,0 +1,54 @@
+name: PARSA local manual backup (Windows laptop)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_backup:
+        description: "Type BACKUP to start a local backup on the connected laptop"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  local-backup:
+    if: ${{ inputs.confirm_backup == 'BACKUP' }}
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create non-destructive local backup
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = 'C:\PARSA_BACKUPS\parsa-market-discovery'
+          New-Item -ItemType Directory -Force -Path $root | Out-Null
+          $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+          $bundle = Join-Path $root "parsa-market-discovery-$stamp.bundle"
+          $snapshot = Join-Path $root "parsa-market-discovery-$stamp.zip"
+          $manifest = Join-Path $root "parsa-market-discovery-$stamp-SHA256.txt"
+
+          git bundle create $bundle --all
+          if ($LASTEXITCODE -ne 0) { throw "git bundle failed with exit code $LASTEXITCODE" }
+
+          git archive --format=zip --output=$snapshot HEAD
+          if ($LASTEXITCODE -ne 0) { throw "git archive failed with exit code $LASTEXITCODE" }
+
+          $bundleHash = (Get-FileHash -Algorithm SHA256 $bundle).Hash
+          $snapshotHash = (Get-FileHash -Algorithm SHA256 $snapshot).Hash
+          @(
+            "Created: $(Get-Date -Format o)"
+            "Repository: alirezayazdani7-create/parsa-market-discovery"
+            "Commit: $(git rev-parse HEAD)"
+            "Bundle SHA256: $bundleHash"
+            "Snapshot SHA256: $snapshotHash"
+            "Backup policy: manual; no automatic deletion or overwrite"
+          ) | Set-Content -Encoding UTF8 $manifest
+
+          Write-Host "Backup saved locally to $root"
+          Get-ChildItem $root -Filter "parsa-market-discovery-$stamp*"
