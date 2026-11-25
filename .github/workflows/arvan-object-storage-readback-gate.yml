@@ -1,0 +1,56 @@
+name: PARSA Arvan Object Storage Readback Gate
+
+on:
+  push:
+    branches: [offline-paper-engine-gate-20261125]
+    paths:
+      - ".github/workflows/arvan-object-storage-readback-gate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upload-readback-sha256:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.ARVAN_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.ARVAN_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ir-thr-at1
+      S3_ENDPOINT: https://s3.ir-thr-at1.arvanstorage.ir
+      S3_BUCKET: 2026parsa
+    steps:
+      - name: Validate credentials are configured without printing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${AWS_ACCESS_KEY_ID}" || -z "${AWS_SECRET_ACCESS_KEY}" ]]; then
+            echo "::error::Gate 2 BLOCKED: repository secrets ARVAN_ACCESS_KEY_ID and ARVAN_SECRET_ACCESS_KEY are not both configured."
+            exit 2
+          fi
+          echo "Credential presence confirmed; values remain masked and are not printed."
+      - name: Verify bucket and endpoint
+        run: aws s3api head-bucket --bucket "$S3_BUCKET" --endpoint-url "$S3_ENDPOINT" --region "$AWS_DEFAULT_REGION"
+      - name: Upload non-sensitive probe object
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p gate2
+          printf 'PARSA_GATE2_READBACK\nrun=%s\ncommit=%s\n' "$GITHUB_RUN_ID" "$GITHUB_SHA" > gate2/probe.txt
+          key="gate2-readback/${GITHUB_RUN_ID}-${GITHUB_SHA}.txt"
+          sha256sum gate2/probe.txt | awk '{print $1}' > gate2/source.sha256
+          aws s3api put-object --bucket "$S3_BUCKET" --key "$key" --body gate2/probe.txt --endpoint-url "$S3_ENDPOINT" --region "$AWS_DEFAULT_REGION"
+          aws s3api get-object --bucket "$S3_BUCKET" --key "$key" gate2/readback.txt --endpoint-url "$S3_ENDPOINT" --region "$AWS_DEFAULT_REGION"
+          sha256sum gate2/readback.txt | awk '{print $1}' > gate2/readback.sha256
+          diff -u gate2/source.sha256 gate2/readback.sha256
+          echo "Gate 2 PASS: upload/readback SHA-256 matched."
+          echo "Probe object retained at s3://$S3_BUCKET/$key for audit; no existing object was overwritten or deleted."
+      - name: Upload local gate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arvan-readback-gate-${{ github.run_id }}
+          path: gate2/
+          if-no-files-found: warn
+          retention-days: 14
