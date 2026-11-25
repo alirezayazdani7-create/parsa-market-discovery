@@ -5,7 +5,9 @@ from __future__ import annotations
 import hashlib
 import re
 import zipfile
+from pathlib import PurePosixPath
 from typing import Any
+from urllib.parse import urlparse
 
 _SHA256 = re.compile(r"^[0-9a-fA-F]{64}$")
 
@@ -14,6 +16,15 @@ def _record_member(record: dict[str, Any]) -> str:
         value = record.get(key)
         if isinstance(value, str) and value:
             return value
+    # The production Binance manifests identify each source archive by URL,
+    # symbol and month. In the packaged dataset the original archive bytes are
+    # retained as SYMBOL/SOURCE_BASENAME.zip; normalized_csv is not the hash target.
+    source_url = record.get("source_url")
+    symbol = record.get("symbol")
+    if isinstance(source_url, str) and isinstance(symbol, str) and symbol:
+        basename = PurePosixPath(urlparse(source_url).path).name
+        if basename and basename.endswith(".zip"):
+            return f"{symbol}/{basename}"
     raise ValueError("DATA_INTEGRITY: manifest file record has no member path")
 
 def _record_digest(record: dict[str, Any]) -> str:
