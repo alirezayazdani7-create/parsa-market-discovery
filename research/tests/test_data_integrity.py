@@ -5,6 +5,8 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from data_integrity import validate_part_manifest
 
 class ManifestHashValidationTests(unittest.TestCase):
